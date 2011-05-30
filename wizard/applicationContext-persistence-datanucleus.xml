@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+    <bean id="DataNucleusPersistenceModule" class="org.romaframework.aspect.persistence.datanucleus.DataNucleusPersistenceModule" singleton="true">
+        <constructor-arg ref="OIDManager"/>
+        <property name="runtimeEnhancement" value="false"/>
+        <property name="configuration">
+            <map>
+                <!-- TO TUNE DATANUCLEUS LOOK AT: http://www.datanucleus.org/products/accessplatform/performance_tuning.html -->
+                <entry key="datanucleus.PersistenceUnitName" value="default"/>
+                
+                <entry key="javax.jdo.PersistenceManagerFactoryClass" value="org.datanucleus.jdo.JDOPersistenceManagerFactory"/>
+                <entry key="javax.jdo.option.NontransactionalRead" value="true"/>
+                <entry key="javax.jdo.option.RetainValues" value="true"/>
+                <entry key="datanucleus.cache.level2" value="true"/>
+                <entry key="datanucleus.cache.collections.lazy" value="true"/>
+                <entry key="datanucleus.plugin.pluginRegistryBundleCheck" value="NONE"/>
+
+		<!-- ENABLE THIS PROPERTY TO USE THE OLD DATANUCLEUS COLUMN DEFAULT DEFINITION -->
+		<!-- <entry key="datanucleus.identifierFactory" value="datanucleus" /> -->
+                
+                <!-- SET THE CONNECTION POOLING LIBRARY (C3P0 IS BUNDLED WITH DISTRIBUTION) -->
+                <entry key="datanucleus.connectionPoolingType" value="C3P0"/>
+                
+                <!-- SET THE FOLLOWING TO FALSE AT RUN-TIME TO GAIN PERFORMANCE AT STARTUP -->
+                <entry key="datanucleus.autoCreateSchema" value="true"/>
+                <entry key="datanucleus.autoCreateTables" value="true"/>
+                <entry key="datanucleus.autoCreateColumns" value="true"/>
+                <entry key="datanucleus.autoCreateConstraints" value="true"/>
+                <entry key="datanucleus.validateTables" value="true"/>
+                <entry key="datanucleus.validateConstraints" value="true"/>
+                <entry key="datanucleus.validateColumns" value="true"/>
+            </map>
+        </property>
+    </bean>
+    
+    <bean id="PersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOAtomicPersistenceAspect"
+     singleton="true">
+        <constructor-arg ref="DataNucleusPersistenceModule"/>
+    </bean>
+    
+    <bean id="TxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOTxPersistenceAspect" singleton="false">
+        <constructor-arg ref="DataNucleusPersistenceModule"/>
+    </bean>
+    
+    <bean id="NoTxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDONoTxPersistenceAspect"
+     singleton="false">
+        <constructor-arg ref="DataNucleusPersistenceModule"/>
+    </bean>
+    
+    <bean id="OIDManager" class="org.romaframework.aspect.persistence.datanucleus.DataNucleusOIDManager" singleton="true"/>
+    <bean id="JDOMetadataResourceResolver" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOMetadataResourceResolver"/>
+</beans>

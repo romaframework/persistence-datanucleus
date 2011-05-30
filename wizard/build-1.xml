@@ -1,0 +1,44 @@
+<path id="project.enhancement.classpath">
+		<pathelement location="${project.dist}/tempjar"/>
+		<fileset dir="${project.lib.compile}" includes="**/*.jar"/>
+		<fileset dir="${project.lib.runtime}" includes="**/*.jar"/>
+</path>
+
+<target depends="compile" name="persistence-compile">
+  <taskdef classname="org.datanucleus.enhancer.tools.EnhancerTask" classpathref="project.classpath" name="datanucleusenhancer"/>
+  <taskdef name="for" classname="net.sf.antcontrib.logic.ForTask" classpathref="project.classpath" /> 
+	<mkdir dir="${project.dist}/tempjar"/>
+	<for param="file">
+	  <path>
+	  	<fileset dir="${project.web}">
+  	        <include name="**/roma-*.jar"/>
+	  		<exclude name="**/roma-persistence*.jar"/>
+	  		<exclude name="**/roma-view*.jar"/>
+	  		<exclude name="**/roma-core*.jar"/>
+	  		<exclude name="**/roma-frontend*.jar"/>
+	  		<exclude name="**/roma-project*.jar"/>
+  	    </fileset>
+	  </path>
+	  <sequential>
+	  	<delete>
+	  		<fileset dir="${project.dist}/tempjar" includes="**/*"/>
+	  	</delete>
+	  	<unzip src="@{file}" dest="${project.dist}/tempjar"/>
+	  	<delete file="@{file}"/>
+	  	<datanucleusenhancer classpathref="project.enhancement.classpath" dir="${project.dist}/tempjar" failonerror="true" verbose="true">
+	  	    <jvmarg line="-Dlog4j.configuration=file:src/datanucleus-log4j.properties"/>
+	  	</datanucleusenhancer>
+	  	<zip destfile="@{file}">
+	  		<fileset dir="${project.dist}/tempjar">
+	  			<include name="**/*"/>
+	  		</fileset>
+	  	</zip>
+	  </sequential>
+	</for>
+
+	
+  <datanucleusenhancer classpathref="project.classpath" dir="${project.build}" failonerror="true" verbose="true">
+    <jvmarg line="-Dlog4j.configuration=file:src/datanucleus-log4j.properties"/>
+  </datanucleusenhancer>
+  <delete dir="${project.dist}/tempjar" />
+</target>

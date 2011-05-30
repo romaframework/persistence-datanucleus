@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="compile" name="persistence-datanucleus">
+	<property name="project.path" value="../.." />
+	<property name="project.version" value="1.1.0" />
+	<property name="project.category" value="modules" />
+	<property name="project.depends.jar" value="roma-core.jar" />
+	<property name="project.depends.prj" value="modules/core" />
+
+	<import file="${project.path}/common/default-build.xml" />
+
+	<target name="deploy" depends="compile">
+		<jar jarfile="${project.dist}/lib/roma-${ant.project.name}.jar" compress="true">
+			<fileset dir="${project.build}">
+				<include name="**/*" />
+			</fileset>
+			<manifest>
+				<attribute name="Class-Path" value="${project.depends.jar}" />
+				<attribute name="Main-Class" value="${project.mainclass}" />
+				<attribute name="Premain-Class" value="org.romaframework.aspect.persistence.datanucleus.DataNucleusAgent" />
+			</manifest>
+		</jar>
+	</target>
+</project>

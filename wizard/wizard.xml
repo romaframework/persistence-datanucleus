@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="add-module" name="roma-aspect-persistence-datanucleus-wizard">
+	<property environment="env" />
+	<property name="roma.home" value="${env.ROMA_HOME}" />
+
+	<import file="${roma.home}/common/wizard/base-wizard.xml" />
+
+	<target name="add-module" depends="load-project-info">
+		<property name="module.ioc-file" value="applicationContext-persistence-datanucleus.xml" />
+		<antcall target="copy-module-ioc-file" />
+
+		<property name="module.aspect-name" value="persistence" />
+		<property name="module.aspect-component" value="PersistenceAspect" />
+		<antcall target="register-def-aspect" />
+
+		<echo>Adding 'persistence-compile' + 'persistence-synch-schema' targets on project's build.xml -></echo>
+		<xmltask source="${project.path}/build.xml" dest="${project.path}/build.xml" preservetype="true" expandEntityReferences="false">
+			<xmlcatalog refid="dtds" />
+			<remove path="/project/target[@name='persistence-compile']" />
+			<insert path="/project/target[last()]" position="after" file="build-1.xml" />
+
+			<remove path="/project/target[@name='persistence-synch-schema']" />
+			<insert path="/project/target[last()]" position="after" file="build-2.xml" />
+
+			<!-- UPDATE DEFAULT TARGET -->
+			<attr path="/project" attr="default" value="persistence-compile" />
+			<attr path="/project/target[@name='install']" attr="depends" value="persistence-compile" />
+		</xmltask>
+
+		<!-- COPY JDO.DTD AND PACKAGE.JDO FILES -->
+		<echo>Adding application.jdo and jdo*.dtd -></echo>
+		<copy todir="${project.path}/${project.src}/${project.package-path}/domain/entity">
+			<fileset dir=".">
+				<include name="package.jdo" />
+			</fileset>
+			<filterset>
+				<filter token="project.package" value="${project.package}" />
+			</filterset>
+		</copy>
+		<copy todir="${project.path}/${project.src}/${project.package-path}/domain/entity">
+			<fileset dir=".">
+				<include name="*.dtd" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="update-module-v2.0.0" depends="load-project-info">
+
+		<xmltask source="${project.path}/${project.ioc-path}/applicationContext-persistence-datanucleus.xml" dest="${project.path}/${project.ioc-path}/applicationContext-persistence-datanucleus.xml" preservetype="true" expandEntityReferences="false">
+			<xmlcatalog refid="dtds" />
+			<attr path="/beans/bean[@id='PersistenceAspect']" attr="class" value="org.romaframework.aspect.persistence.datanucleus.DataNucleusPersistenceModule" />
+			<attr path="/beans/bean[@id='OIDManager']" attr="class" value="org.romaframework.aspect.persistence.datanucleus.DataNucleusOIDManager" />
+			<attr path="/beans/bean[@id='PersistenceAspect']" attr="id" value="DataNucleusPersistenceModule" />
+			
+			<insert path="/beans/bean[last()]" position="after">
+				<![CDATA[	<bean id="PersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOAtomicPersistenceAspect"
+				singleton="true">
+				<constructor-arg ref="DataNucleusPersistenceModule" />
+			</bean>
+
+			<bean id="TxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOTxPersistenceAspect" singleton="false">
+				<constructor-arg ref="DataNucleusPersistenceModule" />
+			</bean>
+
+			<bean id="NoTxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDONoTxPersistenceAspect"
+				singleton="false">
+				<constructor-arg ref="DataNucleusPersistenceModule" />
+			</bean>
+
+			<bean id="JDOMetadataResourceResolver" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOMetadataResourceResolver" /> ]]>
+			</insert>
+		</xmltask>
+		<delete>
+			<fileset dir="${project.path}/${project.run-time-lib}" includes="datanucleus*.jar"/>
+		</delete>
+
+		<delete file="${project.path}/${project.ioc-path}/applicationContext-persistence-jdo.xml" />
+
+		<xmltask source="${project.path}/roma-project.xml" dest="${project.path}/roma-project.xml" preservetype="true" expandEntityReferences="false">
+			<xmlcatalog refid="dtds" />
+				<remove path="/properties/entry[key='module.persistence-jdo']"/>
+		</xmltask>
+		<antcall target="update-module-libs" />
+	</target>
+</project>

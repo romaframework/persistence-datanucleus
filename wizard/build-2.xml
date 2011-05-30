@@ -1,0 +1,15 @@
+	<target name="persistence-synch-schema">
+		<taskdef classname="org.datanucleus.store.rdbms.SchemaToolTask" classpathref="project.classpath" name="schematool">
+		</taskdef>
+		<schematool failonerror="true" mode="create" verbose="true">
+			<classpath>
+				<path refid="project.classpath">
+				</path>
+			</classpath>
+			<fileset dir="${project.build}">
+				<include name="**/*.jdo">
+				</include>
+			</fileset>
+			<sysproperty key="datanucleus.PersistenceUnitName" value="default" />
+		</schematool>
+	</target>
