@@ -25,7 +25,7 @@ import javax.jdo.listener.InstanceLifecycleListener;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.datanucleus.jdo.NucleusJDOHelper;
+import org.datanucleus.api.jdo.NucleusJDOHelper;
 import org.datanucleus.metadata.AbstractMemberMetaData;
 import org.datanucleus.metadata.ClassMetaData;
 import org.datanucleus.metadata.ClassPersistenceModifier;

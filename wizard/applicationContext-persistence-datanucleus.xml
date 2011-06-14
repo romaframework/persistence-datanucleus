@@ -9,7 +9,7 @@
                 <!-- TO TUNE DATANUCLEUS LOOK AT: http://www.datanucleus.org/products/accessplatform/performance_tuning.html -->
                 <entry key="datanucleus.PersistenceUnitName" value="default"/>
                 
-                <entry key="javax.jdo.PersistenceManagerFactoryClass" value="org.datanucleus.jdo.JDOPersistenceManagerFactory"/>
+                <entry key="javax.jdo.PersistenceManagerFactoryClass" value="org.datanucleus.api.jdo.JDOPersistenceManagerFactory"/>
                 <entry key="javax.jdo.option.NontransactionalRead" value="true"/>
                 <entry key="javax.jdo.option.RetainValues" value="true"/>
                 <entry key="datanucleus.cache.level2" value="true"/>

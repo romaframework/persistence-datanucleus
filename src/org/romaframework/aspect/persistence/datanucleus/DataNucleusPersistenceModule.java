@@ -17,13 +17,13 @@ public class DataNucleusPersistenceModule extends SelfRegistrantConfigurableModu
 	protected static Log															log				= LogFactory.getLog(DataNucleusPersistenceModule.class);
 
 	public DataNucleusPersistenceModule(OIDManager iOIDManager) {
+		new RomaDetachListener();
 		oidManager = iOIDManager;
 	}
 
 	@Override
 	public void startup() throws RuntimeException {
 		init();
-		new RomaDetachListener();
 	}
 
 	@Override
@@ -76,8 +76,10 @@ public class DataNucleusPersistenceModule extends SelfRegistrantConfigurableModu
 	private void init() {
 		if (persistenceManagerFactory == null)
 			synchronized (this) {
-				if (persistenceManagerFactory == null)
+				if (persistenceManagerFactory == null) {
 					persistenceManagerFactory = JDOHelper.getPersistenceManagerFactory(configuration);
+				}
 			}
+
 	}
 }

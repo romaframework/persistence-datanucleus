@@ -5,12 +5,12 @@ import javax.jdo.spi.Detachable;
 import javax.jdo.spi.PersistenceCapable;
 
 import org.datanucleus.ObjectManager;
-import org.datanucleus.StateManager;
 import org.datanucleus.api.ApiAdapter;
-import org.datanucleus.jdo.JDOPersistenceManager;
+import org.datanucleus.api.jdo.JDOPersistenceManager;
 import org.datanucleus.metadata.AbstractClassMetaData;
 import org.datanucleus.state.FetchPlanState;
-import org.datanucleus.state.StateManagerFactory;
+import org.datanucleus.state.ObjectProviderFactory;
+import org.datanucleus.state.StateManager;
 import org.datanucleus.store.fieldmanager.DetachFieldManager;
 import org.datanucleus.store.fieldmanager.FieldManager;
 import org.datanucleus.util.DetachListener;
@@ -34,18 +34,20 @@ public class RomaDetachListener extends DetachListener {
 				ApiAdapter api = objManager.getApiAdapter();
 				Object id = api.getIdForObject(entity);
 
-				StateManager sm = StateManagerFactory.newStateManagerForDetached(objManager.getExecutionContext(), entity, id,
-						api.getVersionForObject(entity));
+				StateManager sm = (StateManager) ObjectProviderFactory.newForDetached(objManager, entity, id, api.getVersionForObject(entity));
 				sm.retrieveDetachState(sm);
 				AbstractClassMetaData acm = sm.getClassMetaData();
-				int fieldPos = acm.getAbsolutePositionOfMember(field);
-				sm.loadField(fieldPos);
-				FetchPlanState fps = new FetchPlanState();
-				FieldManager detachFieldManager = new DetachFieldManager(sm.getObjectProvider(), acm.getSCOMutableMemberFlags(), objManager
-						.getFetchPlan().manageFetchPlanForClass(acm), fps, false);
-				detachFieldManager.fetchObjectField(fieldPos);
-				((Detachable) entity).jdoReplaceDetachedState();
-				((PersistenceCapable) entity).jdoReplaceStateManager(null);
+				try {
+					int fieldPos = acm.getAbsolutePositionOfMember(field);
+					sm.loadField(fieldPos);
+					FetchPlanState fps = new FetchPlanState();
+					FieldManager detachFieldManager = new DetachFieldManager(sm, acm.getSCOMutableMemberFlags(), objManager.getFetchPlan().manageFetchPlanForClass(acm),
+							fps, false);
+					detachFieldManager.fetchObjectField(fieldPos);
+				} finally {
+					((Detachable) entity).jdoReplaceDetachedState();
+					((PersistenceCapable) entity).jdoReplaceStateManager(null);
+				}
 			}
 		} finally {
 			Roma.context().destroy();
