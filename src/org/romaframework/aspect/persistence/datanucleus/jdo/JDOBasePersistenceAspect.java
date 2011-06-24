@@ -33,6 +33,7 @@ import org.datanucleus.metadata.FieldPersistenceModifier;
 import org.romaframework.aspect.persistence.PersistenceAspect;
 import org.romaframework.aspect.persistence.PersistenceAspectAbstract;
 import org.romaframework.aspect.persistence.PersistenceException;
+import org.romaframework.aspect.persistence.Query;
 import org.romaframework.aspect.persistence.QueryByExample;
 import org.romaframework.aspect.persistence.QueryByFilter;
 import org.romaframework.aspect.persistence.QueryByText;
@@ -49,24 +50,26 @@ import org.romaframework.core.schema.SchemaField;
 @SuppressWarnings("unchecked")
 public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract implements JDBCDatasource {
 
-	protected Map<InstanceLifecycleListener, List<Class<?>>> listeners;
-	protected DataNucleusPersistenceModule	module;
+	protected Map<InstanceLifecycleListener, List<Class<?>>>	listeners;
+	protected DataNucleusPersistenceModule										module;
 
-	protected byte													strategy;
-	protected byte													txMode	= TX_PESSIMISTIC;
-	protected static Log										log			= LogFactory.getLog(JDOBasePersistenceAspect.class);
+	protected byte																						strategy;
+	protected byte																						txMode	= TX_PESSIMISTIC;
+	protected static Log																			log			= LogFactory.getLog(JDOBasePersistenceAspect.class);
 
 	public JDOBasePersistenceAspect(DataNucleusPersistenceModule iSource) {
 		module = iSource;
 		strategy = STRATEGY_DETACHING;
 		init();
 	}
-	public JDOBasePersistenceAspect(DataNucleusPersistenceModule iSource,Map<InstanceLifecycleListener, List<Class<?>>> listeners) {
+
+	public JDOBasePersistenceAspect(DataNucleusPersistenceModule iSource, Map<InstanceLifecycleListener, List<Class<?>>> listeners) {
 		module = iSource;
 		strategy = STRATEGY_DETACHING;
 		this.listeners = listeners;
 		init();
 	}
+
 	public JDOBasePersistenceAspect(DataNucleusPersistenceModule iSource, byte iStrategy) {
 		module = iSource;
 		strategy = iStrategy;
@@ -216,7 +219,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 				log.debug("[JDOPersistenceAspect.updateObject] " + iObject + " using strategy: " + iStrategy);
 
 			iObject = manager.makePersistent(iObject);
-			
+
 			return (T) JDOPersistenceHelper.retrieveObject(manager, null, iStrategy, iObject);
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.updateObject]", e);
@@ -337,9 +340,6 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 				result = JDOPersistenceHelper.queryByText(manager, queryInput);
 			}
 
-			if (result != null)
-				iQuery.setResult(result);
-
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.query]", e);
 			throw new PersistenceException("$PersistenceAspect.query.error", e);
@@ -356,6 +356,37 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		return null;
 	}
 
+	public long queryCount(Query iQuery) throws PersistenceException {
+		PersistenceManager manager = null;
+		long result = 0;
+		try {
+			manager = getPersistenceManager();
+
+			beginOperation(manager);
+
+			if (iQuery.getStrategy() == STRATEGY_DEFAULT)
+				// ASSIGN PERSISTENCE ASPECT STRATEGY
+				iQuery.setStrategy(strategy);
+
+			if (iQuery instanceof QueryByExample) {
+				QueryByExample queryInput = (QueryByExample) iQuery;
+				result = JDOPersistenceHelper.countByExample(manager, queryInput);
+			} else if (iQuery instanceof QueryByFilter) {
+				QueryByFilter queryInput = (QueryByFilter) iQuery;
+				result = JDOPersistenceHelper.countByFilter(manager, queryInput);
+			} else if (iQuery instanceof QueryByText) {
+				QueryByText queryInput = (QueryByText) iQuery;
+				result = JDOPersistenceHelper.countByText(manager, queryInput);
+			}
+		} catch (Throwable e) {
+			log.error("[JDOPersistenceAspect.query]", e);
+			throw new PersistenceException("$PersistenceAspect.query.error", e);
+		} finally {
+			endOperation(manager);
+		}
+		return result;
+	}
+
 	public boolean isObjectLocallyModified(Object iObject) throws PersistenceException {
 		return JDOHelper.isDirty(iObject);
 	}
@@ -369,8 +400,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		if (classMetaData != null) {
 			ClassPersistenceModifier modifier = classMetaData.getPersistenceModifier();
 			if (modifier != null)
-				return modifier.equals(ClassPersistenceModifier.PERSISTENCE_CAPABLE)
-						|| modifier.equals(ClassPersistenceModifier.PERSISTENCE_AWARE);
+				return modifier.equals(ClassPersistenceModifier.PERSISTENCE_CAPABLE) || modifier.equals(ClassPersistenceModifier.PERSISTENCE_AWARE);
 		}
 		return false;
 	}
@@ -402,19 +432,21 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 	public Map<InstanceLifecycleListener, List<Class<?>>> getListeners() {
 		return listeners;
 	}
+
 	public void setListeners(Map<InstanceLifecycleListener, List<Class<?>>> listeners) {
 		this.listeners = listeners;
 	}
+
 	public byte getStrategy() {
 		return strategy;
 	}
+
 	protected void setStrategy(byte iStrategy) {
 		this.strategy = iStrategy;
 	}
-	
+
 	public Connection getConnection() {
-		return (Connection) JDOPersistenceHelper.getPersistenceManager(module.getPersistenceManagerFactory()).getDataStoreConnection()
-				.getNativeConnection();
+		return (Connection) JDOPersistenceHelper.getPersistenceManager(module.getPersistenceManagerFactory()).getDataStoreConnection().getNativeConnection();
 	}
 
 	public boolean isActive() {
