@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project basedir="." default="add-module" name="roma-aspect-persistence-datanucleus-wizard">
-	<property environment="env" />
-	<property name="roma.home" value="${env.ROMA_HOME}" />
 
 	<import file="../../roma-core-wizard/wizard/base-wizard.xml" />
 
@@ -15,7 +13,6 @@
 
 		<echo>Adding 'persistence-compile' + 'persistence-synch-schema' targets on project's build.xml -></echo>
 		<xmltask source="${project.path}/build.xml" dest="${project.path}/build.xml" preservetype="true" expandEntityReferences="false">
-			<xmlcatalog refid="dtds" />
 			<remove path="/project/target[@name='persistence-compile']" />
 			<insert path="/project/target[last()]" position="after" file="build-1.xml" />
 
