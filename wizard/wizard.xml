@@ -3,7 +3,7 @@
 	<property environment="env" />
 	<property name="roma.home" value="${env.ROMA_HOME}" />
 
-	<import file="../../../base-wizard.xml" />
+	<import file="../../roma-core-wizard/wizard/base-wizard.xml" />
 
 	<target name="add-module">
 		<property name="module.ioc-file" value="applicationContext-persistence-datanucleus.xml" />
