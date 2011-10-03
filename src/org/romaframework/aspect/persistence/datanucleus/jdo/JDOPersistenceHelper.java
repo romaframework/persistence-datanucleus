@@ -31,7 +31,7 @@ import javax.jdo.Query;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.romaframework.aspect.persistence.ConditionType;
+import org.romaframework.aspect.persistence.QueryOperator;
 import org.romaframework.aspect.persistence.PersistenceAspect;
 import org.romaframework.aspect.persistence.PersistenceException;
 import org.romaframework.aspect.persistence.QueryByExample;
@@ -159,7 +159,7 @@ public class JDOPersistenceHelper {
 		if (iQuery.getFilter() != null) {
 			Field[] fields = SchemaHelper.getFields(iQuery.getCandidateClass());
 			Object fieldValue;
-			ConditionType operator = null;
+			QueryOperator operator = null;
 			for (int i = 0; i < fields.length; ++i) {
 				try {
 					if (Modifier.isStatic(fields[i].getModifiers()) || Modifier.isTransient(fields[i].getModifiers()))
@@ -495,7 +495,7 @@ public class JDOPersistenceHelper {
 			query.setOrdering(queryOrders.toString());
 	}
 
-	public static int getOperatorMode(ConditionType iFieldOperator) {
+	public static int getOperatorMode(QueryOperator iFieldOperator) {
 		if (iFieldOperator.equals(QueryByFilter.FIELD_IN) || iFieldOperator.equals(QueryByFilter.FIELD_NOT_IN))
 			return MODE_PAR_THEN_FIELD;
 
@@ -503,7 +503,7 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translateFieldOperatorBegin(QueryByFilterItemPredicate iItem) {
-		ConditionType operator = iItem.getFieldOperator();
+		QueryOperator operator = iItem.getFieldOperator();
 
 		if (operator.equals(QueryByFilter.FIELD_EQUALS))
 			return " == ";
@@ -530,7 +530,7 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translateFieldOperatorEnd(QueryByFilterItemPredicate iItem) {
-		ConditionType operator = iItem.getFieldOperator();
+		QueryOperator operator = iItem.getFieldOperator();
 
 		if (operator.equals(QueryByFilter.FIELD_LIKE))
 			return ")";
