@@ -59,11 +59,35 @@ public class JDOPersistenceHelper {
 
 	private static final int							MODE_FIELD_THEN_PAR		= 0;
 	private static final int							MODE_PAR_THEN_FIELD		= 1;
-	private static Log										log										= LogFactory.getLog(JDOPersistenceHelper.class);
+	protected static Log										log										= LogFactory.getLog(JDOPersistenceHelper.class);
 	private static final String						THIS_PREFIX_KEYWORD		= "this.";
 
-	public static Query getQuery(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource, Class<?> iCandidateClass, int iRangeFrom,
-			int iRangeTo, boolean iSubClasses, String iMode) {
+	private static JDOPersistenceHelper		instance;
+
+	private static JDOPersistenceHelper getInstance() {
+		if (instance == null) {
+			synchronized (JDOPersistenceHelper.class) {
+				if (instance == null) {
+					if (Roma.existComponent(JDOPersistenceHelper.class)) {
+						instance = Roma.component(JDOPersistenceHelper.class);
+					} else {
+						instance = new JDOPersistenceHelper();
+					}
+
+				}
+			}
+		}
+		return instance;
+	}
+
+	public static Query getQuery(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource,
+			Class<?> iCandidateClass, int iRangeFrom, int iRangeTo, boolean iSubClasses, String iMode) {
+		return getInstance().getQueryInternal(iManager, iQuerySource, iCandidateClass, iRangeFrom, iRangeTo, iSubClasses, iMode);
+	}
+
+	public Query getQueryInternal(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource,
+			Class<?> iCandidateClass, int iRangeFrom, int iRangeTo, boolean iSubClasses, String iMode) {
+
 		Query query = null;
 
 		try {
@@ -92,10 +116,16 @@ public class JDOPersistenceHelper {
 		return query;
 	}
 
-	public static List<?> prepareQuery(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource, Query iQueryToExecute,
-			Query iCountQuery, Map<String, Object> parValues) {
+	public static List<?> prepareQuery(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource,
+			Query iQueryToExecute, Query iCountQuery, Map<String, Object> parValues) {
+		return getInstance().prepareQueryInternal(iManager, iQuerySource, iQueryToExecute, iCountQuery, parValues);
+	}
+
+	public List<?> prepareQueryInternal(PersistenceManager iManager, org.romaframework.aspect.persistence.Query iQuerySource,
+			Query iQueryToExecute, Query iCountQuery, Map<String, Object> parValues) {
+
 		try {
-			// FIRST PAGE: GET RESULT NUMBER
+		// FIRST PAGE: GET RESULT NUMBER
 			if (iQuerySource.getRangeFrom() == 0) {
 				// BEFORE TO EXECUTE COUNT TOTAL ITEMS
 				iCountQuery.setUnique(true);
@@ -131,6 +161,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static List<?> queryByExample(PersistenceManager manager, QueryByExample iQuery) throws PersistenceException {
+		return getInstance().queryByExampleInternal(manager, iQuery);
+	}
+
+	public List<?> queryByExampleInternal(PersistenceManager manager, QueryByExample iQuery) throws PersistenceException {
 		QueryByFilter filter = buildQueryByFilter(iQuery);
 
 		List<?> result = queryByFilter(manager, filter);
@@ -139,11 +173,15 @@ public class JDOPersistenceHelper {
 	}
 
 	public static long countByExample(PersistenceManager manager, QueryByExample iQuery) throws PersistenceException {
+		return getInstance().countByExampleInternal(manager, iQuery);
+	}
+
+	public long countByExampleInternal(PersistenceManager manager, QueryByExample iQuery) throws PersistenceException {
 		QueryByFilter filter = buildQueryByFilter(iQuery);
 		return countByFilter(manager, filter);
 	}
 
-	private static QueryByFilter buildQueryByFilter(QueryByExample iQuery) {
+	protected QueryByFilter buildQueryByFilter(QueryByExample iQuery) {
 		if (log.isDebugEnabled())
 			log.debug("[JDOPersistenceAspect.queryByExample] Class: " + iQuery.getCandidateClass() + " filter object: " + iQuery);
 
@@ -213,6 +251,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static List<?> queryByFilter(PersistenceManager manager, QueryByFilter iQueryFilter) throws PersistenceException {
+		return getInstance().queryByFilterInternal(manager, iQueryFilter);
+	}
+
+	public List<?> queryByFilterInternal(PersistenceManager manager, QueryByFilter iQueryFilter) throws PersistenceException {
 		if (iQueryFilter == null)
 			return null;
 
@@ -233,10 +275,10 @@ public class JDOPersistenceHelper {
 
 		formatParameters(iQueryFilter, def, queryText, queryParameters, queryVariables, parValues, null);
 
-		Query query = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(), iQueryFilter.getRangeTo(),
-				iQueryFilter.isSubClasses(), iQueryFilter.getMode());
-		Query countQuery = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(), iQueryFilter.getRangeTo(),
-				iQueryFilter.isSubClasses(), iQueryFilter.getMode());
+		Query query = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(),
+				iQueryFilter.getRangeTo(), iQueryFilter.isSubClasses(), iQueryFilter.getMode());
+		Query countQuery = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(),
+				iQueryFilter.getRangeTo(), iQueryFilter.isSubClasses(), iQueryFilter.getMode());
 
 		setOrdering(iQueryFilter, query, queryOrders);
 
@@ -266,6 +308,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static long countByFilter(PersistenceManager manager, QueryByFilter iQueryFilter) {
+		return getInstance().countByFilterInternal(manager, iQueryFilter);
+	}
+
+	public long countByFilterInternal(PersistenceManager manager, QueryByFilter iQueryFilter) {
 		if (iQueryFilter == null)
 			return 0;
 
@@ -283,8 +329,8 @@ public class JDOPersistenceHelper {
 
 		formatParameters(iQueryFilter, def, queryText, queryParameters, queryVariables, parValues, null);
 
-		Query countQuery = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(), iQueryFilter.getRangeTo(),
-				iQueryFilter.isSubClasses(), iQueryFilter.getMode());
+		Query countQuery = getQuery(manager, iQueryFilter, iQueryFilter.getCandidateClass(), iQueryFilter.getRangeFrom(),
+				iQueryFilter.getRangeTo(), iQueryFilter.isSubClasses(), iQueryFilter.getMode());
 
 		if (queryParameters.length() > 0) {
 			countQuery.declareParameters(queryParameters.toString());
@@ -312,14 +358,15 @@ public class JDOPersistenceHelper {
 		return totalItems;
 	}
 
-	private static void closeQuery(List<?> result, Query query, byte iStrategy) {
+	private void closeQuery(List<?> result, Query query, byte iStrategy) {
 		if (iStrategy == PersistenceAspect.STRATEGY_DETACHING || iStrategy == PersistenceAspect.STRATEGY_TRANSIENT)
 			// CLOSE IMMEDIATELY THE QUERY TO SAVE RESOURCES
 			query.close(result);
 	}
 
-	private static void formatItems(Iterator<QueryByFilterItem> items, SchemaClassDefinition def, StringBuilder queryText, StringBuilder queryParameters,
-			StringBuilder queryVariables, HashMap<String, Object> parValues, String iObjectName, String predicateOperator) {
+	private void formatItems(Iterator<QueryByFilterItem> items, SchemaClassDefinition def, StringBuilder queryText,
+			StringBuilder queryParameters, StringBuilder queryVariables, HashMap<String, Object> parValues, String iObjectName,
+			String predicateOperator) {
 		Object itemValue;
 		String parName;
 		String tempParName;
@@ -374,7 +421,8 @@ public class JDOPersistenceHelper {
 				field = def.getField(predicate.getFieldName());
 
 				if (field == null)
-					throw new PersistenceException("Cannot execute query: field " + predicate.getFieldName() + " not found in Class<?> " + def.getSchemaClass().getName());
+					throw new PersistenceException("Cannot execute query: field " + predicate.getFieldName() + " not found in Class<?> "
+							+ def.getSchemaClass().getName());
 
 				// GET FIELD VALUE
 				itemValue = predicate.getFieldValue();
@@ -447,7 +495,8 @@ public class JDOPersistenceHelper {
 					queryVariables.append(" ");
 					queryVariables.append(parName);
 
-					formatParameters((QueryByFilter) predicate.getFieldValue(), nestedDef, queryText, queryParameters, queryVariables, parValues, parName);
+					formatParameters((QueryByFilter) predicate.getFieldValue(), nestedDef, queryText, queryParameters, queryVariables,
+							parValues, parName);
 				} else {
 					// DECLARE PARAMETER
 					if (queryParameters.length() > 0)
@@ -473,12 +522,17 @@ public class JDOPersistenceHelper {
 		}
 	}
 
-	private static void formatParameters(QueryByFilter iQueryFilter, SchemaClassDefinition def, StringBuilder queryText, StringBuilder queryParameters,
-			StringBuilder queryVariables, HashMap<String, Object> parValues, String iObjectName) {
-		formatItems(iQueryFilter.getItemsIterator(), def, queryText, queryParameters, queryVariables, parValues, iObjectName, iQueryFilter.getPredicateOperator());
+	private void formatParameters(QueryByFilter iQueryFilter, SchemaClassDefinition def, StringBuilder queryText,
+			StringBuilder queryParameters, StringBuilder queryVariables, HashMap<String, Object> parValues, String iObjectName) {
+		formatItems(iQueryFilter.getItemsIterator(), def, queryText, queryParameters, queryVariables, parValues, iObjectName,
+				iQueryFilter.getPredicateOperator());
 	}
 
 	public static void setOrdering(QueryByFilter iQueryFilter, Query query, StringBuilder queryOrders) {
+		getInstance().setOrderingInternal(iQueryFilter, query, queryOrders);
+	}
+
+	public void setOrderingInternal(QueryByFilter iQueryFilter, Query query, StringBuilder queryOrders) {
 		// SET ORDERING IF ANY
 		QueryByFilterOrder order;
 		for (Iterator<QueryByFilterOrder> it = iQueryFilter.getOrdersIterator(); it.hasNext();) {
@@ -496,6 +550,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static int getOperatorMode(QueryOperator iFieldOperator) {
+		return getInstance().getOperatorModeInternal(iFieldOperator);
+	}
+
+	public int getOperatorModeInternal(QueryOperator iFieldOperator) {
 		if (iFieldOperator.equals(QueryByFilter.FIELD_IN) || iFieldOperator.equals(QueryByFilter.FIELD_NOT_IN))
 			return MODE_PAR_THEN_FIELD;
 
@@ -503,6 +561,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translateFieldOperatorBegin(QueryByFilterItemPredicate iItem) {
+		return getInstance().translateFieldOperatorBeginInternal(iItem);
+	}
+
+	public String translateFieldOperatorBeginInternal(QueryByFilterItemPredicate iItem) {
 		QueryOperator operator = iItem.getFieldOperator();
 
 		if (operator.equals(QueryByFilter.FIELD_EQUALS))
@@ -530,6 +592,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translateFieldOperatorEnd(QueryByFilterItemPredicate iItem) {
+		return getInstance().translateFieldOperatorEndInternal(iItem);
+	}
+
+	public String translateFieldOperatorEndInternal(QueryByFilterItemPredicate iItem) {
 		QueryOperator operator = iItem.getFieldOperator();
 
 		if (operator.equals(QueryByFilter.FIELD_LIKE))
@@ -544,6 +610,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translatePredicateOperatorBegin(String iPredicateOperator) {
+		return getInstance().translatePredicateOperatorBeginInternal(iPredicateOperator);
+	}
+
+	public String translatePredicateOperatorBeginInternal(String iPredicateOperator) {
 		if (iPredicateOperator.equals(QueryByFilter.PREDICATE_AND))
 			return " && ";
 		else if (iPredicateOperator.equals(QueryByFilter.PREDICATE_OR))
@@ -554,10 +624,18 @@ public class JDOPersistenceHelper {
 	}
 
 	public static String translatePredicateOperatorEnd(String iPredicateOperator) {
+		return getInstance().translatePredicateOperatorEndInternal(iPredicateOperator);
+	}
+
+	public String translatePredicateOperatorEndInternal(String iPredicateOperator) {
 		return "";
 	}
 
 	public static String translateOrderingMode(String iOrderMode) {
+		return getInstance().translateOrderingModeInternal(iOrderMode);
+	}
+
+	public String translateOrderingModeInternal(String iOrderMode) {
 		if (iOrderMode.equals(QueryByFilter.ORDER_ASC))
 			return " ascending";
 		else if (iOrderMode.equals(QueryByFilter.ORDER_DESC))
@@ -565,7 +643,13 @@ public class JDOPersistenceHelper {
 		return "";
 	}
 
-	public static long countByText(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource) throws PersistenceException {
+	public static long countByText(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource)
+			throws PersistenceException {
+		return getInstance().countByTextInternal(manager, iQuerySource);
+	}
+
+	public long countByTextInternal(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource)
+			throws PersistenceException {
 
 		Class<?> iCandidateClass = iQuerySource.getCandidateClass();
 		String iQuery = iQuerySource.getText();
@@ -604,7 +688,13 @@ public class JDOPersistenceHelper {
 		return result;
 	}
 
-	public static List<?> queryByText(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource) throws PersistenceException {
+	public static List<?> queryByText(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource)
+			throws PersistenceException {
+		return getInstance().queryByTextInternal(manager, iQuerySource);
+	}
+
+	public List<?> queryByTextInternal(PersistenceManager manager, org.romaframework.aspect.persistence.QueryByText iQuerySource)
+			throws PersistenceException {
 
 		Class<?> iCandidateClass = iQuerySource.getCandidateClass();
 		String iQuery = iQuerySource.getText();
@@ -655,6 +745,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static Object retrieveObject(PersistenceManager manager, String iMode, byte iStrategy, Object iObject) {
+		return getInstance().retrieveObjectInternal(manager, iMode, iStrategy, iObject);
+	}
+
+	public Object retrieveObjectInternal(PersistenceManager manager, String iMode, byte iStrategy, Object iObject) {
 		if (iObject == null)
 			return null;
 
@@ -674,7 +768,13 @@ public class JDOPersistenceHelper {
 		return tempResult;
 	}
 
-	public static List<?> retrieveObjects(PersistenceManager manager, org.romaframework.aspect.persistence.Query iQuerySource, List<?> tempResult) {
+	public static List<?> retrieveObjects(PersistenceManager manager, org.romaframework.aspect.persistence.Query iQuerySource,
+			List<?> tempResult) {
+		return getInstance().retrieveObjectsInternal(manager, iQuerySource, tempResult);
+	}
+
+	public List<?> retrieveObjectsInternal(PersistenceManager manager, org.romaframework.aspect.persistence.Query iQuerySource,
+			List<?> tempResult) {
 		switch (iQuerySource.getStrategy()) {
 		case PersistenceAspect.STRATEGY_DETACHING:
 			tempResult = (List<?>) manager.detachCopyAll(tempResult);
@@ -687,6 +787,10 @@ public class JDOPersistenceHelper {
 	}
 
 	public static void closeManager(PersistenceManager manager) {
+		getInstance().closeManagerInternal(manager);
+	}
+
+	public void closeManagerInternal(PersistenceManager manager) {
 		if (manager != null && !manager.isClosed()) {
 			if (manager.currentTransaction().isActive())
 				manager.currentTransaction().rollback();
@@ -701,6 +805,10 @@ public class JDOPersistenceHelper {
 	 * @return PersistenceManager from the factory
 	 */
 	public static PersistenceManager getPersistenceManager(PersistenceManagerFactory factory) {
+		return getInstance().getPersistenceManagerInternal(factory);
+	}
+
+	public static PersistenceManager getPersistenceManagerInternal(PersistenceManagerFactory factory) {
 		PersistenceManager pm = factory.getPersistenceManager();
 
 		// SET NO LIMIT FOR FETCHING LINKED OBJECTS
