@@ -31,7 +31,6 @@ import javax.jdo.Query;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.romaframework.aspect.persistence.QueryOperator;
 import org.romaframework.aspect.persistence.PersistenceAspect;
 import org.romaframework.aspect.persistence.PersistenceException;
 import org.romaframework.aspect.persistence.QueryByExample;
@@ -42,6 +41,7 @@ import org.romaframework.aspect.persistence.QueryByFilterItemPredicate;
 import org.romaframework.aspect.persistence.QueryByFilterItemText;
 import org.romaframework.aspect.persistence.QueryByFilterOrder;
 import org.romaframework.aspect.persistence.QueryByText;
+import org.romaframework.aspect.persistence.QueryOperator;
 import org.romaframework.core.Roma;
 import org.romaframework.core.schema.SchemaClassDefinition;
 import org.romaframework.core.schema.SchemaField;
