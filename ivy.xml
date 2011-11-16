@@ -12,9 +12,9 @@
 	</publications>
 	<dependencies>
 		<dependency org="org.romaframework" name="roma-core" rev="latest.integration" />
-		<dependency org="org.datanucleus" name="datanucleus-core" rev="latest.integration" />
-		<dependency org="org.datanucleus" name="datanucleus-enhancer" rev="latest.integration" />
+		<dependency org="org.datanucleus" name="datanucleus-core" rev="3.0.0-release" />
+		<dependency org="org.datanucleus" name="datanucleus-enhancer" rev="3.0.0-release" />
 		<dependency org="org.datanucleus" name="datanucleus-connectionpool" rev="latest.integration" />
-		<dependency org="org.datanucleus" name="datanucleus-rdbms" rev="latest.integration" />
+		<dependency org="org.datanucleus" name="datanucleus-rdbms" rev="3.0.0-release" />
 	</dependencies>
 </ivy-module>
