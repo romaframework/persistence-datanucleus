@@ -176,11 +176,11 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		}
 	}
 
-	public <T> T createObject(Object iObject) throws PersistenceException {
+	public <T> T createObject(T iObject) throws PersistenceException {
 		return (T) createObject(iObject, strategy);
 	}
 
-	public <T> T createObject(Object iObject, byte iStrategy) throws PersistenceException {
+	public <T> T createObject(T iObject, byte iStrategy) throws PersistenceException {
 		if (iObject == null)
 			return null;
 
@@ -202,11 +202,11 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		}
 	}
 
-	public <T> T updateObject(Object iObject) throws PersistenceException {
+	public <T> T updateObject(T iObject) throws PersistenceException {
 		return (T) updateObject(iObject, strategy);
 	}
 
-	public <T> T updateObject(Object iObject, byte iStrategy) throws PersistenceException {
+	public <T> T updateObject(T iObject, byte iStrategy) throws PersistenceException {
 		if (iObject == null)
 			return null;
 
