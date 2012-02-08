@@ -101,11 +101,11 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		return oid.toString();
 	}
 
-	public <T> T loadObject(T iObject, String iMode) throws PersistenceException {
-		return loadObject(iObject, iMode, strategy);
+	public <T> T refreshObject(T iObject, String iMode) throws PersistenceException {
+		return refreshObject(iObject, iMode, strategy);
 	}
 
-	public <T> T loadObject(T iObject, String iMode, byte iStrategy) throws PersistenceException {
+	public <T> T refreshObject(T iObject, String iMode, byte iStrategy) throws PersistenceException {
 		if (log.isDebugEnabled())
 			log.debug("[JDOPersistenceAspect.loadObject] obj: " + iObject + " mode: " + iMode + ", strategy: " + iStrategy);
 
@@ -165,8 +165,44 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 			T freshObj = null;
 
 			Object oid = module.getOidManager().getOID(manager, iOID);
-
 			freshObj = (T) manager.getObjectById(oid, true);
+
+			return (T) JDOPersistenceHelper.retrieveObject(manager, iMode, iStrategy, freshObj);
+		} catch (Throwable e) {
+			throw new PersistenceException("$PersistenceAspect.loadObjectByOID.error", e);
+		} finally {
+			endOperation(manager);
+		}
+	}
+
+	public <T> T loadObjectByOID(Class<T> clazz, Object id) throws PersistenceException {
+		return loadObjectByOID(clazz, id, null);
+	}
+
+	public <T> T loadObjectByOID(Class<T> clazz, Object id, String iMode) throws PersistenceException {
+		return loadObjectByOID(clazz, id, iMode, strategy);
+	}
+
+	public <T> T loadObjectByOID(Class<T> clazz, Object id, String iMode, byte iStrategy) throws PersistenceException {
+		if (clazz == null || id == null)
+			return null;
+
+		if (log.isDebugEnabled())
+			log.debug("[JDOPersistenceAspect.loadObjectByOID] of class " + clazz.getSimpleName() + " id: " + id + " mode: " + iMode + ", strategy: " + iStrategy);
+
+		PersistenceManager manager = null;
+		try {
+			manager = getPersistenceManager();
+
+			if (iMode != null)
+				// SET FETCH GROUP POLICY
+				manager.getFetchPlan().addGroup(iMode);
+
+			beginOperation(manager);
+
+			T freshObj = null;
+
+			freshObj = (T) manager.getObjectById(clazz, id);
 
 			return (T) JDOPersistenceHelper.retrieveObject(manager, iMode, iStrategy, freshObj);
 		} catch (Throwable e) {
