@@ -44,7 +44,7 @@ public class JDOAtomicPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	public PersistenceManager getPersistenceManager() {
-		PersistenceManager pm = JDOPersistenceHelper.getPersistenceManager(module.getPersistenceManagerFactory());
+		PersistenceManager pm = createManager();
 		pm.setDetachAllOnCommit(true);
 		return pm;
 	}
@@ -62,7 +62,7 @@ public class JDOAtomicPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	protected void closeOperation(PersistenceManager iManager) {
-		JDOPersistenceHelper.closeManager(iManager);
+		closeManager(iManager);
 	}
 
 	public void commit() {

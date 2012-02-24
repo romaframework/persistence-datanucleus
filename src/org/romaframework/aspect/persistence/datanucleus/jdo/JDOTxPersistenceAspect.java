@@ -52,7 +52,7 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	protected void init() {
-		contextManager = JDOPersistenceHelper.getPersistenceManager(module.getPersistenceManagerFactory());
+		contextManager = createManager();
 
 		if (contextManager.currentTransaction().isActive()) {
 			// CLOSE ANY PREVIOUS TX IF ANY
@@ -96,16 +96,15 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 		log.debug("[JDOTxPersistenceAspect.commit]");
 
 		contextManager.currentTransaction().commit();
-		JDOPersistenceHelper.closeManager(contextManager);
+		closeManager(contextManager);
 	}
 
 	public void rollback() {
 		log.debug("[JDOTxPersistenceAspect.rollback]");
 
 		contextManager.currentTransaction().rollback();
-		JDOPersistenceHelper.closeManager(contextManager);
-	}
-
+		closeManager(contextManager);
+	}	
 	public void close() {
 		if (contextManager.isClosed())
 			return;
@@ -116,6 +115,6 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	protected void finalize() throws Throwable {
-		JDOPersistenceHelper.closeManager(contextManager);
+		closeManager(contextManager);
 	}
 }

@@ -52,6 +52,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 	protected Map<InstanceLifecycleListener, List<Class<?>>>	listeners;
 	protected DataNucleusPersistenceModule										module;
+	protected QueryEngine																			queryEngine;
 
 	protected byte																						strategy;
 	protected byte																						txMode	= TX_PESSIMISTIC;
@@ -133,7 +134,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 				freshObj = (T) manager.getObjectById(oid, true);
 			}
 
-			return (T) JDOPersistenceHelper.retrieveObject(manager, iMode, iStrategy, freshObj);
+			return (T) retrieveObject(manager, iMode, iStrategy, freshObj);
 		} catch (Throwable e) {
 			throw new PersistenceException("$PersistenceAspect.loadObject.error", e);
 		} finally {
@@ -167,7 +168,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 			Object oid = module.getOidManager().getOID(manager, iOID);
 			freshObj = (T) manager.getObjectById(oid, true);
 
-			return (T) JDOPersistenceHelper.retrieveObject(manager, iMode, iStrategy, freshObj);
+			return (T) retrieveObject(manager, iMode, iStrategy, freshObj);
 		} catch (Throwable e) {
 			throw new PersistenceException("$PersistenceAspect.loadObjectByOID.error", e);
 		} finally {
@@ -204,7 +205,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			freshObj = (T) manager.getObjectById(clazz, id);
 
-			return (T) JDOPersistenceHelper.retrieveObject(manager, iMode, iStrategy, freshObj);
+			return (T) retrieveObject(manager, iMode, iStrategy, freshObj);
 		} catch (Throwable e) {
 			throw new PersistenceException("$PersistenceAspect.loadObjectByOID.error", e);
 		} finally {
@@ -229,7 +230,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 			beginOperation(manager);
 			iObject = manager.makePersistent(iObject);
 
-			return (T) JDOPersistenceHelper.retrieveObject(manager, null, iStrategy, iObject);
+			return (T) retrieveObject(manager, null, iStrategy, iObject);
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.createObject]", e);
 			throw new PersistenceException("$PersistenceAspect.createObject.error", e);
@@ -256,7 +257,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			iObject = manager.makePersistent(iObject);
 
-			return (T) JDOPersistenceHelper.retrieveObject(manager, null, iStrategy, iObject);
+			return (T) retrieveObject(manager, null, iStrategy, iObject);
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.updateObject]", e);
 			throw new PersistenceException("$PersistenceAspect.updateObject.error", e);
@@ -288,7 +289,7 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 				currObject = manager.makePersistent(currObject);
 
-				returnObjects[i] = JDOPersistenceHelper.retrieveObject(manager, null, iStrategy, currObject);
+				returnObjects[i] = retrieveObject(manager, null, iStrategy, currObject);
 			}
 
 			return returnObjects;
@@ -367,13 +368,16 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			if (iQuery instanceof QueryByExample) {
 				QueryByExample queryInput = (QueryByExample) iQuery;
-				result = JDOPersistenceHelper.queryByExample(manager, queryInput);
+				result = queryEngine.queryByExample(manager, queryInput);
+				// result = JDOPersistenceHelper.queryByExample(manager, queryInput);
 			} else if (iQuery instanceof QueryByFilter) {
 				QueryByFilter queryInput = (QueryByFilter) iQuery;
-				result = JDOPersistenceHelper.queryByFilter(manager, queryInput);
+				result = queryEngine.queryByFilter(manager, queryInput);
+				// result = JDOPersistenceHelper.queryByFilter(manager, queryInput);
 			} else if (iQuery instanceof QueryByText) {
 				QueryByText queryInput = (QueryByText) iQuery;
-				result = JDOPersistenceHelper.queryByText(manager, queryInput);
+				// result = JDOPersistenceHelper.queryByText(manager, queryInput);
+				result = queryEngine.queryByText(manager, queryInput);
 			}
 
 		} catch (Throwable e) {
@@ -406,13 +410,13 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			if (iQuery instanceof QueryByExample) {
 				QueryByExample queryInput = (QueryByExample) iQuery;
-				result = JDOPersistenceHelper.countByExample(manager, queryInput);
+				result = queryEngine.countByExample(manager, queryInput);
 			} else if (iQuery instanceof QueryByFilter) {
 				QueryByFilter queryInput = (QueryByFilter) iQuery;
-				result = JDOPersistenceHelper.countByFilter(manager, queryInput);
+				result = queryEngine.countByFilter(manager, queryInput);
 			} else if (iQuery instanceof QueryByText) {
 				QueryByText queryInput = (QueryByText) iQuery;
-				result = JDOPersistenceHelper.countByText(manager, queryInput);
+				result = queryEngine.countByText(manager, queryInput);
 			}
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.query]", e);
@@ -482,11 +486,49 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 	}
 
 	public Connection getConnection() {
-		return (Connection) JDOPersistenceHelper.getPersistenceManager(module.getPersistenceManagerFactory()).getDataStoreConnection().getNativeConnection();
+		return (Connection) createManager().getDataStoreConnection().getNativeConnection();
 	}
 
 	public boolean isActive() {
 		return !getPersistenceManager().isClosed();
+	}
+
+	protected void closeManager(PersistenceManager manager) {
+		if (manager != null && !manager.isClosed()) {
+			if (manager.currentTransaction().isActive())
+				manager.currentTransaction().rollback();
+
+			manager.close();
+		}
+	}
+
+	protected PersistenceManager createManager() {
+		PersistenceManager pm = module.getPersistenceManagerFactory().getPersistenceManager();
+
+		// SET NO LIMIT FOR FETCHING LINKED OBJECTS
+		pm.getFetchPlan().setMaxFetchDepth(-1);
+
+		return pm;
+	}
+
+	protected Object retrieveObject(PersistenceManager manager, String iMode, byte iStrategy, Object iObject) {
+		if (iObject == null)
+			return null;
+
+		Object tempResult;
+
+		switch (iStrategy) {
+		case PersistenceAspect.STRATEGY_DETACHING:
+			tempResult = manager.detachCopy(iObject);
+			break;
+		case PersistenceAspect.STRATEGY_TRANSIENT:
+			tempResult = iObject;
+			manager.makeTransient(tempResult, iMode != null);
+			break;
+		default:
+			tempResult = iObject;
+		}
+		return tempResult;
 	}
 
 	public byte getTxMode() {
@@ -495,5 +537,13 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 	public void setTxMode(byte txMode) {
 		this.txMode = txMode;
+	}
+
+	public QueryEngine getQueryEngine() {
+		return queryEngine;
+	}
+
+	public void setQueryEngine(QueryEngine queryEngine) {
+		this.queryEngine = queryEngine;
 	}
 }
