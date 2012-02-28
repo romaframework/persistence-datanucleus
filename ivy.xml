@@ -20,5 +20,6 @@
 		<dependency org="org.datanucleus" name="datanucleus-rdbms" rev="latest.integration" conf="*->default" />
 		<dependency org="org.datanucleus" name="datanucleus-api-jdo" rev="latest.integration" conf="*->default" />
 		<dependency org="javax.jdo" name="jdo-api" rev="latest.integration" conf="*->default" />
+		<dependency org="junit" name="junit" rev="latest.integration" conf="test->default" />
 	</dependencies>
 </ivy-module>
