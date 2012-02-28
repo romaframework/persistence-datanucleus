@@ -19,9 +19,9 @@ import org.romaframework.aspect.persistence.QueryByFilterItemPredicate;
 import org.romaframework.aspect.persistence.QueryByFilterItemReverse;
 import org.romaframework.aspect.persistence.QueryByFilterItemText;
 import org.romaframework.aspect.persistence.QueryByFilterProjection;
+import org.romaframework.aspect.persistence.QueryByFilterProjection.ProjectionOperator;
 import org.romaframework.aspect.persistence.QueryByText;
 import org.romaframework.aspect.persistence.QueryOperator;
-import org.romaframework.aspect.persistence.QueryByFilterProjection.ProjectionOperator;
 import org.romaframework.core.Roma;
 import org.romaframework.core.schema.SchemaField;
 
@@ -32,16 +32,17 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public long countByFilter(PersistenceManager manager, QueryByFilter queryInput) {
+		queryInput.getProjections().clear();
+		queryInput.addProjection("*", ProjectionOperator.COUNT);
+		// return queryByFilter(manager, queryInput);
 		return 0;
 	}
 
 	public long countByExample(PersistenceManager manager, QueryByExample queryInput) {
-		// TODO Auto-generated method stub
-		return 0;
+		return countByFilter(manager, buildQueryByFilter(queryInput));
 	}
 
 	public long countByText(PersistenceManager manager, QueryByText queryInput) {
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
@@ -95,24 +96,45 @@ public class JPQLQueryEngine implements QueryEngine {
 			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), 'A', froms);
 		}
 		query.append("select ");
+		StringBuilder groupBy = new StringBuilder();
 		if (!filter.getProjections().isEmpty()) {
-			buildProjection(query, filter.getProjections(), 'A');
+			buildProjection(query, groupBy, filter.getProjections(), 'A');
 		}
 		query.append(" from ").append(filter.getCandidateClass().getName()).append(" A");
 		for (Map.Entry<Character, Class<?>> from : froms.entrySet()) {
 			query.append(',').append(from.getValue().getName()).append(' ').append(from.getKey());
 		}
 		query.append(where);
+		query.append(groupBy);
 	}
 
-	public void buildProjection(StringBuilder pro, List<QueryByFilterProjection> projections, char alias) {
+	public void buildProjection(StringBuilder pro, StringBuilder groupBy, List<QueryByFilterProjection> projections, char alias) {
 		if (projections != null) {
 			Iterator<QueryByFilterProjection> projectionI = projections.iterator();
+			boolean needGroup = false;
 			while (projectionI.hasNext()) {
 				QueryByFilterProjection projection = projectionI.next();
+				if (!ProjectionOperator.PLAIN.equals(projection.getOperator())) {
+					needGroup = true;
+				}
 				resolveProjection(pro, projection.getField(), projection.getOperator(), alias);
 				if (projectionI.hasNext())
 					pro.append(',');
+			}
+			projectionI = projections.iterator();
+			if (needGroup) {
+				groupBy.append(" group by ");
+				boolean needSep = false;
+				while (projectionI.hasNext()) {
+					QueryByFilterProjection projection = projectionI.next();
+					if (ProjectionOperator.PLAIN.equals(projection.getOperator())) {
+						if (needSep)
+							groupBy.append(',');
+						else
+							needSep = true;
+						resolveProjection(groupBy, projection.getField(), projection.getOperator(), alias);
+					}
+				}
 			}
 		}
 	}

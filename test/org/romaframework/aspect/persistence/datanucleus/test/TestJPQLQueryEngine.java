@@ -7,7 +7,8 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 import org.romaframework.aspect.persistence.QueryByFilter;
-import org.romaframework.aspect.persistence.QueryByFilterItemReverse;
+import org.romaframework.aspect.persistence.QueryByFilterItemGroup;
+import org.romaframework.aspect.persistence.QueryByFilterProjection.ProjectionOperator;
 import org.romaframework.aspect.persistence.QueryOperator;
 import org.romaframework.aspect.persistence.datanucleus.jdo.JPQLQueryEngine;
 import org.romaframework.core.Roma;
@@ -88,7 +89,7 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test", QueryOperator.EQUALS, true);
 		QueryByFilter qbf1 = new QueryByFilter(Roma.class);
 		qbf1.addItem("name", QueryOperator.EQUALS, true);
-		qbf.addItem(new QueryByFilterItemReverse(qbf1, "refer", QueryOperator.EQUALS));
+		qbf.addReverseItem(qbf1, "refer");
 		qbf.addItem("name", QueryOperator.EQUALS, true);
 		StringBuilder query = new StringBuilder();
 		List<Object> params = new ArrayList<Object>();
@@ -99,6 +100,46 @@ public class TestJPQLQueryEngine {
 		Assert.assertEquals(params.size(), 3);
 	}
 
+	@Test
+	public void testGenerateGroup() {
+
+		JPQLQueryEngine qe = new JPQLQueryEngine();
+		QueryByFilter qbf = new QueryByFilter(Roma.class);
+		qbf.addItem("test", QueryOperator.EQUALS, true);
+		QueryByFilterItemGroup group = qbf.addGroup(QueryByFilterItemGroup.PREDICATE_OR);
+		group.addItem("test", QueryOperator.EQUALS, new Object());
+		group.addItem("test1", QueryOperator.EQUALS, new Object());
+		StringBuilder query = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		qe.buildQuery(qbf, query, params);
+
+		Assert.assertEquals(replaceSpaces("select from org.romaframework.core.Roma A where A.test = ?1 and (A.test = ?2 or A.test1 = ?3)"),
+				replaceSpaces(query.toString()));
+		Assert.assertEquals(params.size(), 3);
+	}
+
+	
+	@Test
+	public void testGenerateProjections() {
+
+		JPQLQueryEngine qe = new JPQLQueryEngine();
+		QueryByFilter qbf = new QueryByFilter(Roma.class);
+		qbf.addProjection("test");
+		qbf.addProjection("test",ProjectionOperator.COUNT);
+		qbf.addProjection("test",ProjectionOperator.MAX);
+		qbf.addProjection("test",ProjectionOperator.MIN);
+		qbf.addProjection("test",ProjectionOperator.AVG);
+		qbf.addItem("test", QueryOperator.EQUALS, true);
+		StringBuilder query = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		qe.buildQuery(qbf, query, params);
+
+		Assert.assertEquals(replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test) from org.romaframework.core.Roma A where A.test = ?1 group by A.test"),
+				replaceSpaces(query.toString()));
+		Assert.assertEquals(params.size(), 1);
+	}
+
+	
 	private String replaceSpaces(String toReplace) {
 		int size;
 		do {
