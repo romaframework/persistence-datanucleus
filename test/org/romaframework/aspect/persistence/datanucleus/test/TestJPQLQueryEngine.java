@@ -1,7 +1,9 @@
 package org.romaframework.aspect.persistence.datanucleus.test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import junit.framework.Assert;
 
@@ -27,11 +29,11 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test", QueryOperator.EQUALS, true);
 		qbf.addItem("test2", QueryOperator.EQUALS, new Object());
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 
 		qe.buildQuery(qbf, query, params);
 
-		Assert.assertEquals(replaceSpaces("select from org.romaframework.core.Roma A where A.test = ?1 and A.test2 = ?2"), replaceSpaces(query.toString()));
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2"), replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 2);
 	}
 
@@ -46,10 +48,10 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test3", QueryOperator.NOT_EQUALS, new Object());
 		qbf.addItem("test3", QueryOperator.IN, new Object());
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 		qe.buildQuery(qbf, query, params);
 
-		Assert.assertEquals(replaceSpaces("select from org.romaframework.core.Roma A where A.test = ?1 and A.test2 = ?2 and A.test3 LIKE ?3 and A.test3 <> ?4 and A.test3 IN ?5"),
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2 and A.test3 LIKE :test3 and A.test3 <> :test31 and A.test3 IN :test32"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 5);
 	}
@@ -71,12 +73,12 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test", QueryOperator.NOT_IN, new Object());
 
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 		qe.buildQuery(qbf, query, params);
 
 		Assert
 				.assertEquals(
-						replaceSpaces("select from org.romaframework.core.Roma A where A.test = ?1 and A.test IN ?2 and A.test IN ?3 and A.test LIKE ?4 and A.test > ?5 and A.test >= ?6 and A.test < ?7 and A.test <= ?8 and A.test <> ?9 and A.test NOT IN ?10"),
+						replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test IN :test1 and A.test IN :test2 and A.test LIKE :test3 and A.test > :test4 and A.test >= :test5 and A.test < :test6 and A.test <= :test7 and A.test <> :test8 and A.test NOT IN :test9"),
 						replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 10);
 	}
@@ -92,10 +94,10 @@ public class TestJPQLQueryEngine {
 		qbf.addReverseItem(qbf1, "refer");
 		qbf.addItem("name", QueryOperator.EQUALS, true);
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 		qe.buildQuery(qbf, query, params);
 
-		Assert.assertEquals(replaceSpaces("select from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = ?1 and B.refer = A and B.name = ?2 and A.name = ?3"),
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name and A.name = :name1"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -110,10 +112,10 @@ public class TestJPQLQueryEngine {
 		group.addItem("test", QueryOperator.EQUALS, new Object());
 		group.addItem("test1", QueryOperator.EQUALS, new Object());
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 		qe.buildQuery(qbf, query, params);
 
-		Assert.assertEquals(replaceSpaces("select from org.romaframework.core.Roma A where A.test = ?1 and (A.test = ?2 or A.test1 = ?3)"),
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and (A.test = :test1 or A.test1 = :test11)"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -131,10 +133,10 @@ public class TestJPQLQueryEngine {
 		qbf.addProjection("test",ProjectionOperator.AVG);
 		qbf.addItem("test", QueryOperator.EQUALS, true);
 		StringBuilder query = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String,Object> params = new HashMap<String, Object>();
 		qe.buildQuery(qbf, query, params);
 
-		Assert.assertEquals(replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test) from org.romaframework.core.Roma A where A.test = ?1 group by A.test"),
+		Assert.assertEquals(replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test) from org.romaframework.core.Roma A where A.test = :test group by A.test"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 1);
 	}

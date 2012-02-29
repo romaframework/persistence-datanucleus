@@ -1,16 +1,21 @@
 package org.romaframework.aspect.persistence.datanucleus.jdo;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.romaframework.aspect.persistence.PersistenceAspect;
+import org.romaframework.aspect.persistence.PersistenceException;
 import org.romaframework.aspect.persistence.QueryByExample;
 import org.romaframework.aspect.persistence.QueryByFilter;
 import org.romaframework.aspect.persistence.QueryByFilterItem;
@@ -27,15 +32,22 @@ import org.romaframework.core.schema.SchemaField;
 
 public class JPQLQueryEngine implements QueryEngine {
 
+	protected static Log	log	= LogFactory.getLog(JPQLQueryEngine.class);
+
 	public Query createQuery(PersistenceManager manager, String query) {
+		if (log.isDebugEnabled())
+			log.debug("Executing query:" + query);
 		return manager.newQuery("javax.jdo.query.JPQL", query);
 	}
 
 	public long countByFilter(PersistenceManager manager, QueryByFilter queryInput) {
 		queryInput.getProjections().clear();
 		queryInput.addProjection("*", ProjectionOperator.COUNT);
-		// return queryByFilter(manager, queryInput);
-		return 0;
+		Object o = queryByFilter(manager, queryInput).get(0);
+		if (o instanceof Number) {
+			return ((Number) o).longValue();
+		}
+		throw new PersistenceException("Error no execute count , result not a number");
 	}
 
 	public long countByExample(PersistenceManager manager, QueryByExample queryInput) {
@@ -52,7 +64,7 @@ public class JPQLQueryEngine implements QueryEngine {
 
 	public List<?> queryByFilter(PersistenceManager manager, QueryByFilter queryInput) {
 		StringBuilder stringQuery = new StringBuilder();
-		List<Object> params = new ArrayList<Object>();
+		Map<String, Object> params = new HashMap<String, Object>();
 		buildQuery(queryInput, stringQuery, params);
 		Query query = createQuery(manager, stringQuery.toString());
 		return executeQuery(manager, query, queryInput, params);
@@ -63,32 +75,41 @@ public class JPQLQueryEngine implements QueryEngine {
 		return executeQuery(manager, query, queryInput, null);
 	}
 
-	public List<?> executeQuery(PersistenceManager manager, Query query, org.romaframework.aspect.persistence.Query queryInput, List<Object> params) {
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public List<?> executeQuery(PersistenceManager manager, Query query, org.romaframework.aspect.persistence.Query queryInput, Map<String, Object> params) {
 		if (queryInput.getRangeFrom() > -1 && queryInput.getRangeTo() > -1)
 			query.setRange(queryInput.getRangeFrom(), queryInput.getRangeTo());
-		List<?> result;
+		Object result;
 		if (params == null || params.isEmpty())
-			result = (List<?>) query.execute();
+			result = query.execute();
 		else
-			result = (List<?>) query.executeWithArray(params.toArray());
+			result = query.executeWithMap(params);
 
-		byte strategy = queryInput.getStrategy();
-
-		switch (strategy) {
-		case PersistenceAspect.STRATEGY_DETACHING:
-			result = (List<?>) manager.detachCopyAll(result);
-			query.close(result);
-			break;
-		case PersistenceAspect.STRATEGY_TRANSIENT:
-			manager.makeTransientAll(result, queryInput.getMode() != null);
-			query.close(result);
-			break;
+		if (result instanceof Collection<?>) {
+			byte strategy = queryInput.getStrategy();
+			switch (strategy) {
+			case PersistenceAspect.STRATEGY_DETACHING:
+				result = manager.detachCopyAll((Collection<?>) result);
+				query.close(result);
+				break;
+			case PersistenceAspect.STRATEGY_TRANSIENT:
+				manager.makeTransientAll(result, queryInput.getMode() != null);
+				query.close(result);
+				break;
+			}
 		}
 
-		return result;
+		if (!(result instanceof List)) {
+			if (result instanceof Set<?>) {
+				result = new ArrayList((Set<?>) result);
+			} else
+				result = Arrays.asList(result);
+		}
+
+		return (List<?>) result;
 	}
 
-	public void buildQuery(QueryByFilter filter, StringBuilder query, List<Object> params) {
+	public void buildQuery(QueryByFilter filter, StringBuilder query, Map<String, Object> params) {
 		StringBuilder where = new StringBuilder();
 		Map<Character, Class<?>> froms = new HashMap<Character, Class<?>>();
 		if (!filter.getItems().isEmpty()) {
@@ -99,6 +120,8 @@ public class JPQLQueryEngine implements QueryEngine {
 		StringBuilder groupBy = new StringBuilder();
 		if (!filter.getProjections().isEmpty()) {
 			buildProjection(query, groupBy, filter.getProjections(), 'A');
+		} else {
+			query.append('A');
 		}
 		query.append(" from ").append(filter.getCandidateClass().getName()).append(" A");
 		for (Map.Entry<Character, Class<?>> from : froms.entrySet()) {
@@ -111,18 +134,19 @@ public class JPQLQueryEngine implements QueryEngine {
 	public void buildProjection(StringBuilder pro, StringBuilder groupBy, List<QueryByFilterProjection> projections, char alias) {
 		if (projections != null) {
 			Iterator<QueryByFilterProjection> projectionI = projections.iterator();
-			boolean needGroup = false;
+			boolean hasFunction = false, hasSimple = false;
 			while (projectionI.hasNext()) {
 				QueryByFilterProjection projection = projectionI.next();
-				if (!ProjectionOperator.PLAIN.equals(projection.getOperator())) {
-					needGroup = true;
-				}
+				if (!ProjectionOperator.PLAIN.equals(projection.getOperator()))
+					hasFunction = true;
+				else
+					hasSimple = true;
 				resolveProjection(pro, projection.getField(), projection.getOperator(), alias);
 				if (projectionI.hasNext())
 					pro.append(',');
 			}
 			projectionI = projections.iterator();
-			if (needGroup) {
+			if (hasSimple && hasFunction) {
 				groupBy.append(" group by ");
 				boolean needSep = false;
 				while (projectionI.hasNext()) {
@@ -139,27 +163,33 @@ public class JPQLQueryEngine implements QueryEngine {
 		}
 	}
 
-	private void resolveProjection(StringBuilder build, String filed, ProjectionOperator oper, char alias) {
+	private void resolveProjection(StringBuilder build, String field, ProjectionOperator oper, char alias) {
 		switch (oper) {
 		case AVG:
-			build.append("AVG(").append(alias).append('.').append(filed).append(')');
+			build.append("AVG(").append(alias).append('.').append(field).append(')');
 			break;
 		case COUNT:
-			build.append("COUNT(").append(alias).append('.').append(filed).append(')');
+			if ("*".equals(field))
+				build.append("COUNT(").append(alias).append(')');
+			else
+				build.append("COUNT(").append(alias).append('.').append(field).append(')');
 			break;
 		case MAX:
-			build.append("MAX(").append(alias).append('.').append(filed).append(')');
+			build.append("MAX(").append(alias).append('.').append(field).append(')');
 			break;
 		case MIN:
-			build.append("MIN(").append(alias).append('.').append(filed).append(')');
+			build.append("MIN(").append(alias).append('.').append(field).append(')');
+			break;
+		case SUM:
+			build.append("SUM(").append(alias).append('.').append(field).append(')');
 			break;
 		case PLAIN:
-			build.append(alias).append('.').append(filed);
+			build.append(alias).append('.').append(field);
 			break;
 		}
 	}
 
-	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, List<Object> params, String predicate, char alias, Map<Character, Class<?>> froms) {
+	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, char alias, Map<Character, Class<?>> froms) {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
@@ -172,10 +202,27 @@ public class JPQLQueryEngine implements QueryEngine {
 				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
-				where.append(alias).append(".").append(((QueryByFilterItemPredicate) item).getFieldName());
-				where.append(getJPQLOperator(((QueryByFilterItemPredicate) item).getFieldOperator()));
-				params.add(((QueryByFilterItemPredicate) item).getFieldValue());
-				where.append('?').append(params.size());
+				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
+				String fieldName = pred.getFieldName();
+				where.append(alias).append(".").append(fieldName);
+				where.append(getJPQLOperator(pred.getFieldOperator()));
+				String pName = fieldName.replace('.', '_');
+				int i = 1;
+				while (params.get(pName) != null)
+					pName = fieldName.replace('.', '_') + (i++);
+				if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && (pred.getFieldValue() instanceof String) || pred.getFieldValue() == null) {
+					String value = (String) pred.getFieldValue();
+					if (value == null)
+						params.put(pName, "%");
+					else {
+						if (value.indexOf("*") != -1)
+							params.put(pName, value.toUpperCase().replaceAll("[*]", "%"));
+						else
+							params.put(pName, "%" + value.toUpperCase() + "%");
+					}
+				} else
+					params.put(pName, pred.getFieldValue());
+				where.append(':').append(pName);
 			} else if (item instanceof QueryByFilterItemText) {
 				where.append(alias).append(".").append(((QueryByFilterItemText) item).getCondition());
 			} else if (item instanceof QueryByFilterItemReverse) {
