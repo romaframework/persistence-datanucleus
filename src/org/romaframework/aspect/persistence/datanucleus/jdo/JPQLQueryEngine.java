@@ -5,12 +5,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
+import javax.jdo.spi.PersistenceCapable;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -65,18 +67,34 @@ public class JPQLQueryEngine implements QueryEngine {
 	public List<?> queryByFilter(PersistenceManager manager, QueryByFilter queryInput) {
 		StringBuilder stringQuery = new StringBuilder();
 		Map<String, Object> params = new HashMap<String, Object>();
-		buildQuery(queryInput, stringQuery, params);
+		List<String> projectionList = new ArrayList<String>();
+		buildQuery(queryInput, stringQuery, params, projectionList);
 		Query query = createQuery(manager, stringQuery.toString());
-		return executeQuery(manager, query, queryInput, params);
+		return executeQuery(manager, query, queryInput, params, projectionList);
 	}
 
 	public List<?> queryByText(PersistenceManager manager, QueryByText queryInput) {
 		Query query = createQuery(manager, queryInput.getText());
-		return executeQuery(manager, query, queryInput, null);
+		return executeQuery(manager, query, queryInput, null, null);
+	}
+
+	private Object strategySingle(PersistenceManager manager, Object toChange, byte strategy) {
+		if (toChange instanceof PersistenceCapable) {
+			switch (strategy) {
+			case PersistenceAspect.STRATEGY_DETACHING:
+				toChange = manager.detachCopy(toChange);
+				break;
+			case PersistenceAspect.STRATEGY_TRANSIENT:
+				manager.makeTransient(toChange, false);
+				break;
+			}
+		}
+		return toChange;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public List<?> executeQuery(PersistenceManager manager, Query query, org.romaframework.aspect.persistence.Query queryInput, Map<String, Object> params) {
+	public List<?> executeQuery(PersistenceManager manager, Query query, org.romaframework.aspect.persistence.Query queryInput, Map<String, Object> params,
+			List<String> projectionList) {
 		if (queryInput.getRangeFrom() > -1 && queryInput.getRangeTo() > -1)
 			query.setRange(queryInput.getRangeFrom(), queryInput.getRangeTo());
 		Object result;
@@ -86,17 +104,42 @@ public class JPQLQueryEngine implements QueryEngine {
 			result = query.executeWithMap(params);
 
 		if (result instanceof Collection<?>) {
-			byte strategy = queryInput.getStrategy();
-			switch (strategy) {
-			case PersistenceAspect.STRATEGY_DETACHING:
-				result = manager.detachCopyAll((Collection<?>) result);
+			if (queryInput.hasProjection()) {
+				List newResult = new ArrayList(((Collection) result).size());
+				for (Object curRes : (Iterable) result) {
+					if (curRes instanceof Object[]) {
+						Map<String, Object> newRow = new HashMap<String, Object>();
+						Object[] curArray = ((Object[]) curRes);
+						for (int i = 0; i < curArray.length; i++) {
+							int app = 0;
+							String projectionName = projectionList.get(i);
+							while (newRow.get(projectionName) != null) {
+								projectionName = projectionList.get(i) + app++;
+							}
+							newRow.put(projectionName, strategySingle(manager, curArray[i], queryInput.getStrategy()));
+						}
+						newResult.add(newRow);
+					} else {
+						newResult.add(strategySingle(manager, curRes, queryInput.getStrategy()));
+					}
+				}
 				query.close(result);
-				break;
-			case PersistenceAspect.STRATEGY_TRANSIENT:
-				manager.makeTransientAll(result, queryInput.getMode() != null);
-				query.close(result);
-				break;
+				result = newResult;
+			} else {
+				byte strategy = queryInput.getStrategy();
+				switch (strategy) {
+				case PersistenceAspect.STRATEGY_DETACHING:
+					result = manager.detachCopyAll((Collection<?>) result);
+					query.close(result);
+					break;
+				case PersistenceAspect.STRATEGY_TRANSIENT:
+					manager.makeTransientAll(result, queryInput.getMode() != null);
+					query.close(result);
+					break;
+				}
 			}
+		} else {
+			result = strategySingle(manager, result, queryInput.getStrategy());
 		}
 
 		if (!(result instanceof List)) {
@@ -109,61 +152,79 @@ public class JPQLQueryEngine implements QueryEngine {
 		return (List<?>) result;
 	}
 
-	public void buildQuery(QueryByFilter filter, StringBuilder query, Map<String, Object> params) {
+	public void buildQuery(QueryByFilter filter, StringBuilder query, Map<String, Object> params, List<String> projectionList) {
 		StringBuilder where = new StringBuilder();
-		Map<Character, Class<?>> froms = new HashMap<Character, Class<?>>();
+		Map<String, Class<?>> froms = new HashMap<String, Class<?>>();
+		Map<String, List<QueryByFilterProjection>> projections = new LinkedHashMap<String, List<QueryByFilterProjection>>();
+		projections.put("A", filter.getProjections());
 		if (!filter.getItems().isEmpty()) {
 			where.append(" where ");
-			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), 'A', froms);
+			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections);
 		}
 		query.append("select ");
 		StringBuilder groupBy = new StringBuilder();
 		if (!filter.getProjections().isEmpty()) {
-			buildProjection(query, groupBy, filter.getProjections(), 'A');
+			buildProjection(query, groupBy, projections, projectionList);
 		} else {
 			query.append('A');
 		}
 		query.append(" from ").append(filter.getCandidateClass().getName()).append(" A");
-		for (Map.Entry<Character, Class<?>> from : froms.entrySet()) {
+		for (Map.Entry<String, Class<?>> from : froms.entrySet()) {
 			query.append(',').append(from.getValue().getName()).append(' ').append(from.getKey());
 		}
 		query.append(where);
 		query.append(groupBy);
 	}
 
-	public void buildProjection(StringBuilder pro, StringBuilder groupBy, List<QueryByFilterProjection> projections, char alias) {
-		if (projections != null) {
-			Iterator<QueryByFilterProjection> projectionI = projections.iterator();
-			boolean hasFunction = false, hasSimple = false;
-			while (projectionI.hasNext()) {
-				QueryByFilterProjection projection = projectionI.next();
-				if (!ProjectionOperator.PLAIN.equals(projection.getOperator()))
-					hasFunction = true;
-				else
-					hasSimple = true;
-				resolveProjection(pro, projection.getField(), projection.getOperator(), alias);
-				if (projectionI.hasNext())
-					pro.append(',');
-			}
-			projectionI = projections.iterator();
-			if (hasSimple && hasFunction) {
-				groupBy.append(" group by ");
-				boolean needSep = false;
+	public void buildProjection(StringBuilder pro, StringBuilder groupBy, Map<String, List<QueryByFilterProjection>> projections, List<String> projectionList) {
+		Iterator<Map.Entry<String, List<QueryByFilterProjection>>> entries = projections.entrySet().iterator();
+		boolean hasFunction = false, hasSimple = false;
+		while (entries.hasNext()) {
+			Map.Entry<String, List<QueryByFilterProjection>> entry = entries.next();
+			if (entry.getValue() != null) {
+				Iterator<QueryByFilterProjection> projectionI = entry.getValue().iterator();
 				while (projectionI.hasNext()) {
 					QueryByFilterProjection projection = projectionI.next();
-					if (ProjectionOperator.PLAIN.equals(projection.getOperator())) {
-						if (needSep)
-							groupBy.append(',');
-						else
-							needSep = true;
-						resolveProjection(groupBy, projection.getField(), projection.getOperator(), alias);
+					if (!ProjectionOperator.PLAIN.equals(projection.getOperator()))
+						hasFunction = true;
+					else
+						hasSimple = true;
+					resolveProjection(pro, projection.getField(), projection.getOperator(), entry.getKey());
+					projectionList.add(projection.getField());
+					if (projectionI.hasNext())
+						pro.append(',');
+				}
+				if (entries.hasNext())
+					pro.append(',');
+			}
+		}
+		entries = projections.entrySet().iterator();
+		while (entries.hasNext()) {
+			Map.Entry<String, List<QueryByFilterProjection>> entry = entries.next();
+			if (entry.getValue() != null) {
+				Iterator<QueryByFilterProjection> projectionI = entry.getValue().iterator();
+
+				projectionI = entry.getValue().iterator();
+				if (hasSimple && hasFunction) {
+					groupBy.append(" group by ");
+					boolean needSep = false;
+					while (projectionI.hasNext()) {
+						QueryByFilterProjection projection = projectionI.next();
+						if (ProjectionOperator.PLAIN.equals(projection.getOperator())) {
+							if (needSep)
+								groupBy.append(',');
+							else
+								needSep = true;
+							projectionList.add(projection.getField());
+							resolveProjection(groupBy, projection.getField(), projection.getOperator(), entry.getKey());
+						}
 					}
 				}
 			}
 		}
 	}
 
-	private void resolveProjection(StringBuilder build, String field, ProjectionOperator oper, char alias) {
+	private void resolveProjection(StringBuilder build, String field, ProjectionOperator oper, String alias) {
 		switch (oper) {
 		case AVG:
 			build.append("AVG(").append(alias).append('.').append(field).append(')');
@@ -184,22 +245,28 @@ public class JPQLQueryEngine implements QueryEngine {
 			build.append("SUM(").append(alias).append('.').append(field).append(')');
 			break;
 		case PLAIN:
-			build.append(alias).append('.').append(field);
+			if ("this".equals(field)) {
+				build.append(alias);
+			} else {
+				build.append(alias).append('.').append(field);
+			}
 			break;
 		}
 	}
 
-	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, char alias, Map<Character, Class<?>> froms) {
+	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, String alias, Map<String, Class<?>> froms,
+			Map<String, List<QueryByFilterProjection>> projections) {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
+		char aliasAppend = 'A';
 		while (iter.hasNext()) {
 			QueryByFilterItem item = iter.next();
 			if (item instanceof QueryByFilterItemGroup) {
 				if (((QueryByFilterItemGroup) item).getItems() == null && ((QueryByFilterItemGroup) item).getItems().isEmpty())
 					continue;
 				where.append("(");
-				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms);
+				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
@@ -227,17 +294,17 @@ public class JPQLQueryEngine implements QueryEngine {
 				where.append(alias).append(".").append(((QueryByFilterItemText) item).getCondition());
 			} else if (item instanceof QueryByFilterItemReverse) {
 				String field = ((QueryByFilterItemReverse) item).getField();
-				char newAlias = alias;
-				newAlias++;
+				String newAlias = alias + (aliasAppend++);
 				where.append(newAlias).append(".").append(field);
 				where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
 				where.append(alias);
 				QueryByFilter qbf = ((QueryByFilterItemReverse) item).getQueryByFilter();
 				froms.put(newAlias, qbf.getCandidateClass());
+				projections.put(newAlias, qbf.getProjections());
 				if (qbf.getItems().size() > 0) {
 					where.append(" ").append(predicate).append(" ");
 				}
-				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms);
+				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections);
 			}
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");

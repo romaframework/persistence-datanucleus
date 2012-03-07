@@ -29,9 +29,11 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test", QueryOperator.EQUALS, true);
 		qbf.addItem("test2", QueryOperator.EQUALS, new Object());
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
+		Map<String, Object> params = new HashMap<String, Object>();
 
-		qe.buildQuery(qbf, query, params);
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
+
 
 		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2"), replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 2);
@@ -48,11 +50,15 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test3", QueryOperator.NOT_EQUALS, new Object());
 		qbf.addItem("test3", QueryOperator.IN, new Object());
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
-		qe.buildQuery(qbf, query, params);
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
 
-		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2 and A.test3 LIKE :test3 and A.test3 <> :test31 and A.test3 IN :test32"),
-				replaceSpaces(query.toString()));
+
+		Assert
+				.assertEquals(
+						replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2 and A.test3 LIKE :test3 and A.test3 <> :test31 and A.test3 IN :test32"),
+						replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 5);
 	}
 
@@ -73,8 +79,10 @@ public class TestJPQLQueryEngine {
 		qbf.addItem("test", QueryOperator.NOT_IN, new Object());
 
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
-		qe.buildQuery(qbf, query, params);
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
+
 
 		Assert
 				.assertEquals(
@@ -94,10 +102,12 @@ public class TestJPQLQueryEngine {
 		qbf.addReverseItem(qbf1, "refer");
 		qbf.addItem("name", QueryOperator.EQUALS, true);
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
-		qe.buildQuery(qbf, query, params);
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
 
-		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name and A.name = :name1"),
+		Assert.assertEquals(
+				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name and A.name = :name1"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -112,36 +122,62 @@ public class TestJPQLQueryEngine {
 		group.addItem("test", QueryOperator.EQUALS, new Object());
 		group.addItem("test1", QueryOperator.EQUALS, new Object());
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
-		qe.buildQuery(qbf, query, params);
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
+
 
 		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and (A.test = :test1 or A.test1 = :test11)"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
 
-	
 	@Test
 	public void testGenerateProjections() {
 
 		JPQLQueryEngine qe = new JPQLQueryEngine();
 		QueryByFilter qbf = new QueryByFilter(Roma.class);
 		qbf.addProjection("test");
-		qbf.addProjection("test",ProjectionOperator.COUNT);
-		qbf.addProjection("test",ProjectionOperator.MAX);
-		qbf.addProjection("test",ProjectionOperator.MIN);
-		qbf.addProjection("test",ProjectionOperator.AVG);
+		qbf.addProjection("test", ProjectionOperator.COUNT);
+		qbf.addProjection("test", ProjectionOperator.MAX);
+		qbf.addProjection("test", ProjectionOperator.MIN);
+		qbf.addProjection("test", ProjectionOperator.AVG);
+		qbf.addProjection("test", ProjectionOperator.SUM);
 		qbf.addItem("test", QueryOperator.EQUALS, true);
 		StringBuilder query = new StringBuilder();
-		Map<String,Object> params = new HashMap<String, Object>();
-		qe.buildQuery(qbf, query, params);
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
 
-		Assert.assertEquals(replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test) from org.romaframework.core.Roma A where A.test = :test group by A.test"),
+
+		Assert.assertEquals(
+				replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test),SUM(A.test) from org.romaframework.core.Roma A where A.test = :test group by A.test"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 1);
 	}
 
-	
+	@Test
+	public void testGenerateProjectionsReverse() {
+
+		JPQLQueryEngine qe = new JPQLQueryEngine();
+		QueryByFilter qbf = new QueryByFilter(Roma.class);
+		qbf.addProjection("test");
+		qbf.addItem("test", QueryOperator.EQUALS, true);
+		QueryByFilter qbf1 = new QueryByFilter(Roma.class);
+		qbf1.addItem("name", QueryOperator.EQUALS, true);
+		qbf1.addProjection("name");
+		qbf.addReverseItem(qbf1, "refer");
+		StringBuilder query = new StringBuilder();
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
+
+		Assert.assertEquals(
+				replaceSpaces("select A.test,B.name from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name"),
+				replaceSpaces(query.toString()));
+		Assert.assertEquals(params.size(), 2);
+	}
+
 	private String replaceSpaces(String toReplace) {
 		int size;
 		do {
