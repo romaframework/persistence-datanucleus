@@ -277,7 +277,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				int i = 1;
 				while (params.get(pName) != null)
 					pName = fieldName.replace('.', '_') + (i++);
-				if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && (pred.getFieldValue() instanceof String) || pred.getFieldValue() == null) {
+				if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
 					String value = (String) pred.getFieldValue();
 					if (value == null)
 						params.put(pName, "%");

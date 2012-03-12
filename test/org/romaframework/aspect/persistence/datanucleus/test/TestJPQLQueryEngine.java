@@ -107,7 +107,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 		Assert.assertEquals(
-				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name and A.name = :name1"),
+				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where A.test = :test and AA.refer = A and AA.name = :name and A.name = :name1"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -121,6 +121,7 @@ public class TestJPQLQueryEngine {
 		QueryByFilterItemGroup group = qbf.addGroup(QueryByFilterItemGroup.PREDICATE_OR);
 		group.addItem("test", QueryOperator.EQUALS, new Object());
 		group.addItem("test1", QueryOperator.EQUALS, new Object());
+		qbf.addItem(group);
 		StringBuilder query = new StringBuilder();
 		Map<String, Object> params = new HashMap<String, Object>();
 		List<String> project = new ArrayList<String>();
@@ -173,7 +174,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 		Assert.assertEquals(
-				replaceSpaces("select A.test,B.name from org.romaframework.core.Roma A,org.romaframework.core.Roma B where A.test = :test and B.refer = A and B.name = :name"),
+				replaceSpaces("select A.test,AA.name from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where A.test = :test and AA.refer = A and AA.name = :name"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 2);
 	}
