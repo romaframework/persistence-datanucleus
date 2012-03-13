@@ -368,16 +368,16 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			if (iQuery instanceof QueryByExample) {
 				QueryByExample queryInput = (QueryByExample) iQuery;
-				result = queryEngine.queryByExample(manager, queryInput);
+				result = getQueryEngine().queryByExample(manager, queryInput);
 				// result = JDOPersistenceHelper.queryByExample(manager, queryInput);
 			} else if (iQuery instanceof QueryByFilter) {
 				QueryByFilter queryInput = (QueryByFilter) iQuery;
-				result = queryEngine.queryByFilter(manager, queryInput);
+				result = getQueryEngine().queryByFilter(manager, queryInput);
 				// result = JDOPersistenceHelper.queryByFilter(manager, queryInput);
 			} else if (iQuery instanceof QueryByText) {
 				QueryByText queryInput = (QueryByText) iQuery;
 				// result = JDOPersistenceHelper.queryByText(manager, queryInput);
-				result = queryEngine.queryByText(manager, queryInput);
+				result = getQueryEngine().queryByText(manager, queryInput);
 			}
 
 		} catch (Throwable e) {
@@ -410,13 +410,13 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 
 			if (iQuery instanceof QueryByExample) {
 				QueryByExample queryInput = (QueryByExample) iQuery;
-				result = queryEngine.countByExample(manager, queryInput);
+				result = getQueryEngine().countByExample(manager, queryInput);
 			} else if (iQuery instanceof QueryByFilter) {
 				QueryByFilter queryInput = (QueryByFilter) iQuery;
-				result = queryEngine.countByFilter(manager, queryInput);
+				result = getQueryEngine().countByFilter(manager, queryInput);
 			} else if (iQuery instanceof QueryByText) {
 				QueryByText queryInput = (QueryByText) iQuery;
-				result = queryEngine.countByText(manager, queryInput);
+				result = getQueryEngine().countByText(manager, queryInput);
 			}
 		} catch (Throwable e) {
 			log.error("[JDOPersistenceAspect.query]", e);
@@ -540,6 +540,13 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 	}
 
 	public QueryEngine getQueryEngine() {
+		if (queryEngine == null) {
+			synchronized (this) {
+				if (queryEngine == null) {
+					queryEngine = new JDOPersistenceHelperQueryEngine();
+				}
+			}
+		}
 		return queryEngine;
 	}
 
