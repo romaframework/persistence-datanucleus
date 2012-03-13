@@ -295,10 +295,19 @@ public class JPQLQueryEngine implements QueryEngine {
 			} else if (item instanceof QueryByFilterItemReverse) {
 				String field = ((QueryByFilterItemReverse) item).getField();
 				String newAlias = alias + (aliasAppend++);
-				where.append(newAlias).append(".").append(field);
-				where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
-				where.append(alias);
 				QueryByFilter qbf = ((QueryByFilterItemReverse) item).getQueryByFilter();
+				if (((QueryByFilterItemReverse) item).isOuter()) {
+					where.append('(').append(newAlias).append(".").append(field);
+					where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
+					where.append(alias).append(" or ");
+					where.append(" NOT EXISTS (SELECT A1 FROM ").append(qbf.getCandidateClass().getName()).append(" A1 WHERE A1");
+					where.append(".").append(field).append(" = ").append(newAlias);
+					where.append("))");
+				} else {
+					where.append(newAlias).append(".").append(field);
+					where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
+					where.append(alias);
+				}
 				froms.put(newAlias, qbf.getCandidateClass());
 				projections.put(newAlias, qbf.getProjections());
 				if (qbf.getItems().size() > 0) {

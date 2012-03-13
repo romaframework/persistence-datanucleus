@@ -111,6 +111,28 @@ public class TestJPQLQueryEngine {
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
+	
+	@Test
+	public void testGenerateReverseOuter() {
+
+		JPQLQueryEngine qe = new JPQLQueryEngine();
+		QueryByFilter qbf = new QueryByFilter(Roma.class);
+		qbf.addItem("test", QueryOperator.EQUALS, true);
+		QueryByFilter qbf1 = new QueryByFilter(Roma.class);
+		qbf1.addItem("name", QueryOperator.EQUALS, true);
+		qbf.addReverseItem(qbf1, "refer",true);
+		qbf.addItem("name", QueryOperator.EQUALS, true);
+		StringBuilder query = new StringBuilder();
+		Map<String, Object> params = new HashMap<String, Object>();
+		List<String> project = new ArrayList<String>();
+		qe.buildQuery(qbf, query, params, project);
+
+		Assert.assertEquals(
+				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where A.test = :test and (AA.refer = A or NOT EXISTS (SELECT A1 FROM org.romaframework.core.Roma A1 WHERE A1.refer = AA)) and AA.name = :name and A.name = :name1"),
+				replaceSpaces(query.toString()));
+		Assert.assertEquals(params.size(), 3);
+	}
+	
 
 	@Test
 	public void testGenerateGroup() {
