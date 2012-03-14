@@ -272,24 +272,33 @@ public class JPQLQueryEngine implements QueryEngine {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
 				String fieldName = pred.getFieldName();
 				where.append(alias).append(".").append(fieldName);
-				where.append(getJPQLOperator(pred.getFieldOperator()));
-				String pName = fieldName.replace('.', '_');
-				int i = 1;
-				while (params.get(pName) != null)
-					pName = fieldName.replace('.', '_') + (i++);
-				if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
-					String value = (String) pred.getFieldValue();
-					if (value == null)
-						params.put(pName, "%");
-					else {
-						if (value.indexOf("*") != -1)
-							params.put(pName, value.toUpperCase().replaceAll("[*]", "%"));
-						else
-							params.put(pName, "%" + value.toUpperCase() + "%");
+				if (pred.getFieldValue() == null) {
+					if (QueryOperator.EQUALS.equals(pred.getFieldOperator())) {
+						where.append(" IS NULL ");
+					} else if (QueryOperator.NOT_EQUALS.equals(pred.getFieldOperator())) {
+						where.append(" IS NOT NULL ");
 					}
-				} else
-					params.put(pName, pred.getFieldValue());
-				where.append(':').append(pName);
+				} else {
+					where.append(getJPQLOperator(pred.getFieldOperator()));
+					String pName = fieldName.replace('.', '_');
+					int i = 1;
+					while (params.get(pName) != null)
+						pName = fieldName.replace('.', '_') + (i++);
+					if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
+						String value = (String) pred.getFieldValue();
+						if (value == null)
+							params.put(pName, "%");
+						else {
+							if (value.indexOf("*") != -1)
+								params.put(pName, value.toUpperCase().replaceAll("[*]", "%"));
+							else
+								params.put(pName, "%" + value.toUpperCase() + "%");
+						}
+					} else {
+						params.put(pName, pred.getFieldValue());
+					}
+					where.append(':').append(pName);
+				}
 			} else if (item instanceof QueryByFilterItemText) {
 				where.append(alias).append(".").append(((QueryByFilterItemText) item).getCondition());
 			} else if (item instanceof QueryByFilterItemReverse) {
