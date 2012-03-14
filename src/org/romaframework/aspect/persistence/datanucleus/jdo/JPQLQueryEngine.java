@@ -310,7 +310,7 @@ public class JPQLQueryEngine implements QueryEngine {
 					where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
 					where.append(alias).append(" or ");
 					where.append(" NOT EXISTS (SELECT A1 FROM ").append(qbf.getCandidateClass().getName()).append(" A1 WHERE A1");
-					where.append(".").append(field).append(" = ").append(newAlias);
+					where.append(".").append(field).append(" = ").append(alias);
 					where.append("))");
 				} else {
 					where.append(newAlias).append(".").append(field);
