@@ -185,14 +185,18 @@ public class JPQLQueryEngine implements QueryEngine {
 				Iterator<QueryByFilterProjection> projectionI = entry.getValue().iterator();
 				while (projectionI.hasNext()) {
 					QueryByFilterProjection projection = projectionI.next();
-					if (!ProjectionOperator.PLAIN.equals(projection.getOperator()))
-						hasFunction = true;
-					else
-						hasSimple = true;
-					resolveProjection(pro, projection.getField(), projection.getOperator(), entry.getKey());
-					projectionList.add(projection.getField());
-					if (projectionI.hasNext())
-						pro.append(',');
+					if (projection instanceof ReverseQueryByFilterProject) {
+						((ReverseQueryByFilterProject) projection).getReverse();
+					} else {
+						if (!ProjectionOperator.PLAIN.equals(projection.getOperator()))
+							hasFunction = true;
+						else
+							hasSimple = true;
+						resolveProjection(pro, projection.getField(), projection.getOperator(), entry.getKey());
+						projectionList.add(projection.getField());
+						if (projectionI.hasNext())
+							pro.append(',');
+					}
 				}
 				if (entries.hasNext())
 					pro.append(',');
@@ -305,18 +309,9 @@ public class JPQLQueryEngine implements QueryEngine {
 				String field = ((QueryByFilterItemReverse) item).getField();
 				String newAlias = alias + (aliasAppend++);
 				QueryByFilter qbf = ((QueryByFilterItemReverse) item).getQueryByFilter();
-				if (((QueryByFilterItemReverse) item).isOuter()) {
-					where.append('(').append(newAlias).append(".").append(field);
-					where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
-					where.append(alias).append(" or ");
-					where.append(" NOT EXISTS (SELECT A1 FROM ").append(qbf.getCandidateClass().getName()).append(" A1 WHERE A1");
-					where.append(".").append(field).append(" = ").append(alias);
-					where.append("))");
-				} else {
-					where.append(newAlias).append(".").append(field);
-					where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
-					where.append(alias);
-				}
+				where.append(newAlias).append(".").append(field);
+				where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
+				where.append(alias);
 				froms.put(newAlias, qbf.getCandidateClass());
 				projections.put(newAlias, qbf.getProjections());
 				if (qbf.getItems().size() > 0) {
