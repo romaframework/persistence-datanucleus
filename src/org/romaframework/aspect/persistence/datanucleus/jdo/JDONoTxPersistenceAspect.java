@@ -41,6 +41,8 @@ public class JDONoTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	protected void init() {
+		if (contextManager != null)
+			closeManager(contextManager);
 		contextManager = createManager();
 
 		strategy = STRATEGY_DETACHING;
@@ -75,10 +77,11 @@ public class JDONoTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 	public void close() {
 		closeManager(contextManager);
+		contextManager = null;
 	}
 
 	@Override
 	protected void finalize() throws Throwable {
-		closeManager(contextManager);
+		close();
 	}
 }

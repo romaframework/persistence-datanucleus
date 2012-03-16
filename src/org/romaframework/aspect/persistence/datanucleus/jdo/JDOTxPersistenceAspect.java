@@ -43,7 +43,7 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 	}
 
 	public JDOTxPersistenceAspect(DataNucleusPersistenceModule iModule, Map<InstanceLifecycleListener, List<Class<?>>> listeners) {
-		super(iModule,listeners);
+		super(iModule, listeners);
 	}
 
 	public JDOTxPersistenceAspect(DataNucleusPersistenceModule iSource, byte iStrategy) {
@@ -52,6 +52,8 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 	@Override
 	protected void init() {
+		if (contextManager != null)
+			closeManager(contextManager);
 		contextManager = createManager();
 
 		if (contextManager.currentTransaction().isActive()) {
@@ -97,6 +99,7 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 		contextManager.currentTransaction().commit();
 		closeManager(contextManager);
+		contextManager = null;
 	}
 
 	public void rollback() {
@@ -104,17 +107,16 @@ public class JDOTxPersistenceAspect extends JDOBasePersistenceAspect {
 
 		contextManager.currentTransaction().rollback();
 		closeManager(contextManager);
-	}	
-	public void close() {
-		if (contextManager.isClosed())
-			return;
+		contextManager = null;
+	}
 
-		if (contextManager.currentTransaction().isActive())
-			rollback();
+	public void close() {
+		closeManager(contextManager);
+		contextManager = null;
 	}
 
 	@Override
 	protected void finalize() throws Throwable {
-		closeManager(contextManager);
+		close();
 	}
 }

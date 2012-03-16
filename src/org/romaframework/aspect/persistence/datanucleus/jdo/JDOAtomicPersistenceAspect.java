@@ -58,6 +58,7 @@ public class JDOAtomicPersistenceAspect extends JDOBasePersistenceAspect {
 	@Override
 	protected void endOperation(PersistenceManager iManager) {
 		iManager.currentTransaction().commit();
+		closeManager(iManager);
 	}
 
 	@Override
