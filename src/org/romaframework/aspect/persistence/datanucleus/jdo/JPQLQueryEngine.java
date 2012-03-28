@@ -25,6 +25,7 @@ import org.romaframework.aspect.persistence.QueryByFilterItemGroup;
 import org.romaframework.aspect.persistence.QueryByFilterItemPredicate;
 import org.romaframework.aspect.persistence.QueryByFilterItemReverse;
 import org.romaframework.aspect.persistence.QueryByFilterItemText;
+import org.romaframework.aspect.persistence.QueryByFilterOrder;
 import org.romaframework.aspect.persistence.QueryByFilterProjection;
 import org.romaframework.aspect.persistence.QueryByFilterProjection.ProjectionOperator;
 import org.romaframework.aspect.persistence.QueryByText;
@@ -156,10 +157,13 @@ public class JPQLQueryEngine implements QueryEngine {
 		StringBuilder where = new StringBuilder();
 		Map<String, Class<?>> froms = new HashMap<String, Class<?>>();
 		Map<String, List<QueryByFilterProjection>> projections = new LinkedHashMap<String, List<QueryByFilterProjection>>();
+		Map<String, List<QueryByFilterOrder>> orders = new LinkedHashMap<String, List<QueryByFilterOrder>>();
 		projections.put("A", filter.getProjections());
+		if (!filter.getOrders().isEmpty())
+			orders.put("A", filter.getOrders());
 		if (!filter.getItems().isEmpty()) {
 			where.append(" where ");
-			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections);
+			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders);
 		}
 		query.append("select ");
 		StringBuilder groupBy = new StringBuilder();
@@ -174,6 +178,28 @@ public class JPQLQueryEngine implements QueryEngine {
 		}
 		query.append(where);
 		query.append(groupBy);
+		buildOrder(query, orders);
+	}
+
+	public void buildOrder(StringBuilder order, Map<String, List<QueryByFilterOrder>> orders) {
+		if (orders.isEmpty())
+			return;
+		order.append(" order by ");
+		Iterator<Map.Entry<String, List<QueryByFilterOrder>>> entries = orders.entrySet().iterator();
+		while (entries.hasNext()) {
+			Map.Entry<String, List<QueryByFilterOrder>> entry = entries.next();
+			if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+				Iterator<QueryByFilterOrder> ordersI = entry.getValue().iterator();
+				while (ordersI.hasNext()) {
+					QueryByFilterOrder ord = ordersI.next();
+					order.append(entry.getKey()).append('.').append(ord.getFieldName()).append(" ").append(ord.getFieldOrder());
+					if (ordersI.hasNext())
+						order.append(',');
+				}
+				if (entries.hasNext())
+					order.append(',');
+			}
+		}
 	}
 
 	public void buildProjection(StringBuilder pro, StringBuilder groupBy, Map<String, List<QueryByFilterProjection>> projections, List<String> projectionList) {
@@ -181,7 +207,7 @@ public class JPQLQueryEngine implements QueryEngine {
 		boolean hasFunction = false, hasSimple = false;
 		while (entries.hasNext()) {
 			Map.Entry<String, List<QueryByFilterProjection>> entry = entries.next();
-			if (entry.getValue() != null) {
+			if (entry.getValue() != null && !entry.getValue().isEmpty()) {
 				Iterator<QueryByFilterProjection> projectionI = entry.getValue().iterator();
 				while (projectionI.hasNext()) {
 					QueryByFilterProjection projection = projectionI.next();
@@ -259,7 +285,7 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, String alias, Map<String, Class<?>> froms,
-			Map<String, List<QueryByFilterProjection>> projections) {
+			Map<String, List<QueryByFilterProjection>> projections, Map<String, List<QueryByFilterOrder>> orders) {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
@@ -270,7 +296,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				if (((QueryByFilterItemGroup) item).getItems() == null && ((QueryByFilterItemGroup) item).getItems().isEmpty())
 					continue;
 				where.append("(");
-				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections);
+				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
@@ -311,13 +337,20 @@ public class JPQLQueryEngine implements QueryEngine {
 				QueryByFilter qbf = ((QueryByFilterItemReverse) item).getQueryByFilter();
 				where.append(newAlias).append(".").append(field);
 				where.append(getJPQLOperator(((QueryByFilterItemReverse) item).getOperator()));
-				where.append(alias);
+				String fieldReverse = ((QueryByFilterItemReverse) item).getFieldReverse();
+
+				if (fieldReverse == null || "this".equals(fieldReverse) || "".equals(fieldReverse))
+					where.append(alias);
+				else
+					where.append(alias).append('.').append(fieldReverse);
 				froms.put(newAlias, qbf.getCandidateClass());
 				projections.put(newAlias, qbf.getProjections());
+				if (!qbf.getOrders().isEmpty())
+					orders.put(newAlias, qbf.getOrders());
 				if (qbf.getItems().size() > 0) {
 					where.append(" ").append(predicate).append(" ");
 				}
-				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections);
+				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections, orders);
 			}
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");
