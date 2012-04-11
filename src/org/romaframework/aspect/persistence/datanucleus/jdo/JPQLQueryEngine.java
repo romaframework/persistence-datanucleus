@@ -344,7 +344,8 @@ public class JPQLQueryEngine implements QueryEngine {
 				else
 					where.append(alias).append('.').append(fieldReverse);
 				froms.put(newAlias, qbf.getCandidateClass());
-				projections.put(newAlias, qbf.getProjections());
+				if (!qbf.getProjections().isEmpty())
+					projections.put(newAlias, qbf.getProjections());
 				if (!qbf.getOrders().isEmpty())
 					orders.put(newAlias, qbf.getOrders());
 				if (qbf.getItems().size() > 0) {
