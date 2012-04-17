@@ -301,7 +301,18 @@ public class JPQLQueryEngine implements QueryEngine {
 			} else if (item instanceof QueryByFilterItemPredicate) {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
 				String fieldName = pred.getFieldName();
-				where.append(alias).append(".").append(fieldName);
+				String pName = fieldName.replace('.', '_');
+				int i = 1;
+				while (params.get(pName) != null)
+					pName = fieldName.replace('.', '_') + (i++);
+				if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
+					where.append("UPPER(").append(alias).append(".").append(fieldName).append(")");
+				} else if (pred.getFieldOperator().equals(QueryOperator.CONTAINS)) {
+					where.append(":").append(pName);
+				} else {
+					where.append(alias).append(".").append(fieldName);
+				}
+
 				if (pred.getFieldValue() == null) {
 					if (QueryOperator.EQUALS.equals(pred.getFieldOperator())) {
 						where.append(" IS NULL ");
@@ -310,10 +321,8 @@ public class JPQLQueryEngine implements QueryEngine {
 					}
 				} else {
 					where.append(getJPQLOperator(pred.getFieldOperator()));
-					String pName = fieldName.replace('.', '_');
-					int i = 1;
-					while (params.get(pName) != null)
-						pName = fieldName.replace('.', '_') + (i++);
+					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+						where.append("(");
 					if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
 						String value = (String) pred.getFieldValue();
 						if (value == null)
@@ -327,7 +336,12 @@ public class JPQLQueryEngine implements QueryEngine {
 					} else {
 						params.put(pName, pred.getFieldValue());
 					}
-					where.append(':').append(pName);
+					if (pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+						where.append(alias).append(".").append(fieldName);
+					else
+						where.append(':').append(pName);
+					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+						where.append(")");
 				}
 			} else if (item instanceof QueryByFilterItemText) {
 				where.append(alias).append(".").append(((QueryByFilterItemText) item).getCondition());
