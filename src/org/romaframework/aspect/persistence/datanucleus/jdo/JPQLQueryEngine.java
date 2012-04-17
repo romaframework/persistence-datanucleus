@@ -318,6 +318,8 @@ public class JPQLQueryEngine implements QueryEngine {
 						where.append(" IS NULL ");
 					} else if (QueryOperator.NOT_EQUALS.equals(pred.getFieldOperator())) {
 						where.append(" IS NOT NULL ");
+					} else {
+						throw new PersistenceException("field:" + pred.getFieldName() + " with Operator: " + pred.getFieldOperator() + " cannot be null.");
 					}
 				} else {
 					where.append(getJPQLOperator(pred.getFieldOperator()));
@@ -375,6 +377,7 @@ public class JPQLQueryEngine implements QueryEngine {
 	private String getJPQLOperator(QueryOperator operator) {
 		switch (operator) {
 		case CONTAINS:
+			return " MEMBER OF ";
 		case IN:
 			return " IN ";
 		case LIKE:
