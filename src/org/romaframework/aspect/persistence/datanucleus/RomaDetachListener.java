@@ -15,6 +15,7 @@ import org.datanucleus.store.fieldmanager.DetachFieldManager;
 import org.datanucleus.store.fieldmanager.FieldManager;
 import org.datanucleus.util.DetachListener;
 import org.romaframework.aspect.persistence.PersistenceAspect;
+import org.romaframework.aspect.persistence.datanucleus.jdo.JDOAtomicPersistenceAspect;
 import org.romaframework.core.Roma;
 
 public class RomaDetachListener extends DetachListener {
@@ -41,12 +42,19 @@ public class RomaDetachListener extends DetachListener {
 					int fieldPos = acm.getAbsolutePositionOfMember(field);
 					sm.loadField(fieldPos);
 					FetchPlanState fps = new FetchPlanState();
-					FieldManager detachFieldManager = new DetachFieldManager(sm, acm.getSCOMutableMemberFlags(), objManager.getFetchPlan().manageFetchPlanForClass(acm),
-							fps, false);
+					FieldManager detachFieldManager = new DetachFieldManager(sm, acm.getSCOMutableMemberFlags(), objManager.getFetchPlan().manageFetchPlanForClass(acm), fps, false);
 					detachFieldManager.fetchObjectField(fieldPos);
 				} finally {
 					((Detachable) entity).jdoReplaceDetachedState();
 					((PersistenceCapable) entity).jdoReplaceStateManager(null);
+					if (aspect == null || aspect instanceof JDOAtomicPersistenceAspect) {
+						if (manager == null || manager.isClosed())
+							return;
+						if (manager.currentTransaction().isActive())
+							manager.currentTransaction().rollback();
+						manager.close();
+						manager = null;
+					}
 				}
 			}
 		} finally {

@@ -35,8 +35,9 @@
 		</property>
 	</bean>
 
-	<bean name="QueryEngine" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOPersistenceHelperQueryEngine">
+	<bean id="QueryEngine" class="org.romaframework.aspect.persistence.datanucleus.jdo.JPQLQueryEngine" singleton="true">
 	</bean>
+
 
 	<bean id="PersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOAtomicPersistenceAspect"
 		singleton="true">
