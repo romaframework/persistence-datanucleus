@@ -44,9 +44,13 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public long countByFilter(PersistenceManager manager, QueryByFilter queryInput) {
-		queryInput.getProjections().clear();
-		queryInput.addProjection("*", ProjectionOperator.COUNT);
-		Object o = queryByFilter(manager, queryInput).get(0);
+		QueryByFilter query2 = new QueryByFilter(queryInput.getCandidateClass(), queryInput.getPredicateOperator());
+		query2.merge(queryInput);
+		
+		query2.getProjections().clear();
+		query2.getOrders().clear();
+		query2.addProjection("*", ProjectionOperator.COUNT);
+		Object o = queryByFilter(manager, query2).get(0);
 		if (o instanceof Number) {
 			return ((Number) o).longValue();
 		}
