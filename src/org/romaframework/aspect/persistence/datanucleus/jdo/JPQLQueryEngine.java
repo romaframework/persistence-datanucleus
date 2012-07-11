@@ -167,7 +167,7 @@ public class JPQLQueryEngine implements QueryEngine {
 			orders.put("A", filter.getOrders());
 		if (!filter.getItems().isEmpty()) {
 			where.append(" where ");
-			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders);
+			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders,'A');
 		}
 		query.append("select ");
 		StringBuilder groupBy = new StringBuilder();
@@ -289,18 +289,17 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, String alias, Map<String, Class<?>> froms,
-			Map<String, List<QueryByFilterProjection>> projections, Map<String, List<QueryByFilterOrder>> orders) {
+			Map<String, List<QueryByFilterProjection>> projections, Map<String, List<QueryByFilterOrder>> orders,char aliasAppend) {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
-		char aliasAppend = 'A';
 		while (iter.hasNext()) {
 			QueryByFilterItem item = iter.next();
 			if (item instanceof QueryByFilterItemGroup) {
 				if (((QueryByFilterItemGroup) item).getItems() == null && ((QueryByFilterItemGroup) item).getItems().isEmpty())
 					continue;
 				where.append("(");
-				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders);
+				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders,aliasAppend);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
@@ -371,7 +370,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				if (qbf.getItems().size() > 0) {
 					where.append(" ").append(predicate).append(" ");
 				}
-				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections, orders);
+				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections, orders,'A');
 			}
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");
