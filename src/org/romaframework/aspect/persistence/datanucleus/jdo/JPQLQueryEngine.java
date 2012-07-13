@@ -46,15 +46,25 @@ public class JPQLQueryEngine implements QueryEngine {
 	public long countByFilter(PersistenceManager manager, QueryByFilter queryInput) {
 		QueryByFilter query2 = new QueryByFilter(queryInput.getCandidateClass(), queryInput.getPredicateOperator());
 		query2.merge(queryInput);
-		
+
 		query2.getProjections().clear();
 		query2.getOrders().clear();
+		clearItems(query2.getItems());
 		query2.addProjection("*", ProjectionOperator.COUNT);
 		Object o = queryByFilter(manager, query2).get(0);
 		if (o instanceof Number) {
 			return ((Number) o).longValue();
 		}
 		throw new PersistenceException("Error no execute count , result not a number");
+	}
+
+	private void clearItems(List<QueryByFilterItem> items) {
+		for (QueryByFilterItem queryByFilterItem : items) {
+			if (queryByFilterItem instanceof QueryByFilterItemReverse) {
+				((QueryByFilterItemReverse) queryByFilterItem).getQueryByFilter().getProjections().clear();
+				clearItems(((QueryByFilterItemReverse) queryByFilterItem).getQueryByFilter().getItems());
+			}
+		}
 	}
 
 	public long countByExample(PersistenceManager manager, QueryByExample queryInput) {
@@ -167,7 +177,7 @@ public class JPQLQueryEngine implements QueryEngine {
 			orders.put("A", filter.getOrders());
 		if (!filter.getItems().isEmpty()) {
 			where.append(" where ");
-			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders,'A');
+			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders, 'A');
 		}
 		query.append("select ");
 		StringBuilder groupBy = new StringBuilder();
@@ -289,7 +299,7 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public void buildWhere(StringBuilder where, List<QueryByFilterItem> items, Map<String, Object> params, String predicate, String alias, Map<String, Class<?>> froms,
-			Map<String, List<QueryByFilterProjection>> projections, Map<String, List<QueryByFilterOrder>> orders,char aliasAppend) {
+			Map<String, List<QueryByFilterProjection>> projections, Map<String, List<QueryByFilterOrder>> orders, char aliasAppend) {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
@@ -299,7 +309,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				if (((QueryByFilterItemGroup) item).getItems() == null && ((QueryByFilterItemGroup) item).getItems().isEmpty())
 					continue;
 				where.append("(");
-				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders,aliasAppend);
+				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders, aliasAppend);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
@@ -370,7 +380,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				if (qbf.getItems().size() > 0) {
 					where.append(" ").append(predicate).append(" ");
 				}
-				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections, orders,'A');
+				buildWhere(where, qbf.getItems(), params, qbf.getPredicateOperator(), newAlias, froms, projections, orders, 'A');
 			}
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");
