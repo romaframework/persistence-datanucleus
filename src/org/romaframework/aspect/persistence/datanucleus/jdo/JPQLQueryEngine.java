@@ -46,7 +46,7 @@ public class JPQLQueryEngine implements QueryEngine {
 	public long countByFilter(PersistenceManager manager, QueryByFilter queryInput) {
 		QueryByFilter query2 = new QueryByFilter(queryInput.getCandidateClass(), queryInput.getPredicateOperator());
 		query2.merge(queryInput);
-		
+
 		query2.getProjections().clear();
 		query2.getOrders().clear();
 		query2.addProjection("*", ProjectionOperator.COUNT);
@@ -170,6 +170,9 @@ public class JPQLQueryEngine implements QueryEngine {
 			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders);
 		}
 		query.append("select ");
+		if (filter.isDistinct()) {
+			query.append("distinct ");
+		}
 		StringBuilder groupBy = new StringBuilder();
 		if (!filter.getProjections().isEmpty()) {
 			buildProjection(query, groupBy, projections, projectionList);
