@@ -493,8 +493,14 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 		return !getPersistenceManager().isClosed();
 	}
 
+	private static int	openManagers	= 0;
+
 	protected void closeManager(PersistenceManager manager) {
 		if (manager != null && !manager.isClosed()) {
+			openManagers--;
+			if (log.isDebugEnabled()) {
+				log.debug("Closing persistence manager, remaining: " + openManagers);
+			}
 			if (manager.currentTransaction().isActive())
 				manager.currentTransaction().rollback();
 
@@ -503,6 +509,10 @@ public abstract class JDOBasePersistenceAspect extends PersistenceAspectAbstract
 	}
 
 	protected PersistenceManager createManager() {
+		openManagers++;
+		if (log.isDebugEnabled()) {
+			log.debug("Opening new persistence manager, total: " + openManagers);
+		}
 		PersistenceManager pm = module.getPersistenceManagerFactory().getPersistenceManager();
 
 		// SET NO LIMIT FOR FETCHING LINKED OBJECTS

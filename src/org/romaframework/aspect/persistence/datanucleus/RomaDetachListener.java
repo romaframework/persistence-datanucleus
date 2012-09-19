@@ -26,10 +26,12 @@ public class RomaDetachListener extends DetachListener {
 
 	@Override
 	public void undetachedFieldAccess(Object entity, String field) {
+		Roma.context().create();
+		PersistenceAspect aspect = null;
+		PersistenceManager manager = null;
 		try {
-			Roma.context().create();
-			PersistenceAspect aspect = Roma.context().persistence();
-			PersistenceManager manager = (PersistenceManager) aspect.getUnderlyingComponent();
+			aspect = Roma.context().persistence();
+			manager = (PersistenceManager) aspect.getUnderlyingComponent();
 			if (manager instanceof JDOPersistenceManager && entity instanceof PersistenceCapable) {
 				ObjectManager objManager = ((JDOPersistenceManager) manager).getObjectManager();
 				ApiAdapter api = objManager.getApiAdapter();
@@ -47,17 +49,17 @@ public class RomaDetachListener extends DetachListener {
 				} finally {
 					((Detachable) entity).jdoReplaceDetachedState();
 					((PersistenceCapable) entity).jdoReplaceStateManager(null);
-					if (aspect == null || aspect instanceof JDOAtomicPersistenceAspect) {
-						if (manager == null || manager.isClosed())
-							return;
-						if (manager.currentTransaction().isActive())
-							manager.currentTransaction().rollback();
-						manager.close();
-						manager = null;
-					}
 				}
 			}
 		} finally {
+			if (aspect == null || aspect instanceof JDOAtomicPersistenceAspect) {
+				if (manager == null || manager.isClosed())
+					return;
+				if (manager.currentTransaction().isActive())
+					manager.currentTransaction().rollback();
+				manager.close();
+				manager = null;
+			}
 			Roma.context().destroy();
 		}
 	}
