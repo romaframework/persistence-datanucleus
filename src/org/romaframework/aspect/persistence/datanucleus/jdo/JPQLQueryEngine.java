@@ -1,5 +1,6 @@
 package org.romaframework.aspect.persistence.datanucleus.jdo;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -430,6 +431,19 @@ public class JPQLQueryEngine implements QueryEngine {
 			QueryOperator operator = null;
 			while (sf.hasNext()) {
 				SchemaField field = sf.next();
+				try {
+					boolean found = false;
+					Field[] fields = iQuery.getCandidateClass().getFields();
+					for (Field classField : fields) {
+						if (classField.getName().equals(field.getName())) {
+							found = true;
+							break;
+						}
+					}
+					if (!found)
+						continue;
+				} catch (SecurityException e) {
+				}
 				fieldValue = field.getValue(iQuery.getFilter());
 				if (fieldValue != null) {
 					if (fieldValue instanceof Collection<?> || fieldValue instanceof Map<?, ?>)
@@ -454,5 +468,4 @@ public class JPQLQueryEngine implements QueryEngine {
 		}
 		return filter;
 	}
-
 }
