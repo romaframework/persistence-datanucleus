@@ -310,7 +310,7 @@ public class JPQLQueryEngine implements QueryEngine {
 		while (iter.hasNext()) {
 			QueryByFilterItem item = iter.next();
 			if (item instanceof QueryByFilterItemGroup) {
-				if (((QueryByFilterItemGroup) item).getItems() == null && ((QueryByFilterItemGroup) item).getItems().isEmpty())
+				if (((QueryByFilterItemGroup) item).getItems() == null || ((QueryByFilterItemGroup) item).getItems().isEmpty())
 					continue;
 				where.append("(");
 				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders, aliasAppend);
