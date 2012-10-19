@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project basedir="." default="compile" name="roma-persistence-datanucleus">
-	<property name="ivy.pom.name" value="Roma Persistence Datanucleus" />
-	<property name="ivy.pom.description" value="Roma Persistence aspect datanucleus implementation" />
-	<property name="ivy.pom.repo-name" value="persistence-datanucleus" />
-	<get src="https://github.com/romaframework/core/raw/master/roma-build.xml" dest="roma-build.xml" skipexisting="true" />
-	<import file="roma-build.xml" />
-</project>
