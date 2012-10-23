@@ -18,6 +18,8 @@ package org.romaframework.aspect.persistence.datanucleus.jdo;
 import javax.jdo.PersistenceManager;
 
 import org.romaframework.aspect.persistence.datanucleus.DataNucleusPersistenceModule;
+import org.romaframework.core.Roma;
+import org.romaframework.core.aspect.AspectManager;
 
 /**
  * Class to handle persistence using DataNucleus tool and JDO 2 technology. Every method is atomic, since it uses a different JDO
@@ -31,6 +33,7 @@ public class JDOAtomicPersistenceAspect extends JDOBasePersistenceAspect {
 
 	public JDOAtomicPersistenceAspect(DataNucleusPersistenceModule iModule) {
 		super(iModule);
+		Roma.component(AspectManager.class).registerAspectIfNotExist(this);
 	}
 
 	public JDOAtomicPersistenceAspect(DataNucleusPersistenceModule iSource, byte iStrategy) {
