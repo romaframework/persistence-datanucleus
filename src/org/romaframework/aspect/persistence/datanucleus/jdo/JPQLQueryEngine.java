@@ -433,7 +433,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				SchemaField field = sf.next();
 				try {
 					boolean found = false;
-					Field[] fields = iQuery.getCandidateClass().getFields();
+					Field[] fields = iQuery.getCandidateClass().getDeclaredFields();
 					for (Field classField : fields) {
 						if (classField.getName().equals(field.getName())) {
 							found = true;
