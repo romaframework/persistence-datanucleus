@@ -340,7 +340,7 @@ public class JPQLQueryEngine implements QueryEngine {
 					}
 				} else {
 					where.append(getJPQLOperator(pred.getFieldOperator()));
-					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+					if (pred.getFieldOperator().equals(QueryOperator.NOT_IN) || pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
 						where.append("(");
 					if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
 						String value = (String) pred.getFieldValue();
@@ -359,7 +359,7 @@ public class JPQLQueryEngine implements QueryEngine {
 						where.append(alias).append(".").append(fieldName);
 					else
 						where.append(':').append(pName);
-					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+					if (pred.getFieldOperator().equals(QueryOperator.NOT_IN) || pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
 						where.append(")");
 				}
 			} else if (item instanceof QueryByFilterItemText) {
