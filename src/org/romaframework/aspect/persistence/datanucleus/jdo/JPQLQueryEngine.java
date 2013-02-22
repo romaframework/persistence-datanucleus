@@ -343,7 +343,7 @@ public class JPQLQueryEngine implements QueryEngine {
 					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
 						where.append("(");
 					if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
-						String value = (String) pred.getFieldValue();
+						String value = (String) quote(pred.getFieldValue());
 						if (value == null)
 							params.put(pName, "%");
 						else {
@@ -353,7 +353,7 @@ public class JPQLQueryEngine implements QueryEngine {
 								params.put(pName, "%" + value.toUpperCase() + "%");
 						}
 					} else {
-						params.put(pName, pred.getFieldValue());
+						params.put(pName, quote(pred.getFieldValue()));
 					}
 					if (pred.getFieldOperator().equals(QueryOperator.CONTAINS))
 						where.append(alias).append(".").append(fieldName);
@@ -389,6 +389,13 @@ public class JPQLQueryEngine implements QueryEngine {
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");
 		}
+	}
+
+	private Object quote(Object fieldValue) {
+		if (fieldValue != null && fieldValue instanceof String) {
+			return ((String) fieldValue).replaceAll("\\\\", "\\\\\\\\");
+		}
+		return fieldValue;
 	}
 
 	private String getJPQLOperator(QueryOperator operator) {
