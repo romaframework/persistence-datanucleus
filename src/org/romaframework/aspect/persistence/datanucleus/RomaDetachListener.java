@@ -4,13 +4,12 @@ import javax.jdo.PersistenceManager;
 import javax.jdo.spi.Detachable;
 import javax.jdo.spi.PersistenceCapable;
 
-import org.datanucleus.ObjectManager;
+import org.datanucleus.ExecutionContext;
 import org.datanucleus.api.ApiAdapter;
 import org.datanucleus.api.jdo.JDOPersistenceManager;
 import org.datanucleus.metadata.AbstractClassMetaData;
 import org.datanucleus.state.FetchPlanState;
-import org.datanucleus.state.ObjectProviderFactory;
-import org.datanucleus.state.StateManager;
+import org.datanucleus.state.ObjectProvider;
 import org.datanucleus.store.fieldmanager.DetachFieldManager;
 import org.datanucleus.store.fieldmanager.FieldManager;
 import org.datanucleus.util.DetachListener;
@@ -33,18 +32,19 @@ public class RomaDetachListener extends DetachListener {
 			aspect = Roma.context().persistence();
 			manager = (PersistenceManager) aspect.getUnderlyingComponent();
 			if (manager instanceof JDOPersistenceManager && entity instanceof PersistenceCapable) {
-				ObjectManager objManager = ((JDOPersistenceManager) manager).getObjectManager();
-				ApiAdapter api = objManager.getApiAdapter();
+				ExecutionContext executionContext = ((JDOPersistenceManager) manager).getExecutionContext();
+				ApiAdapter api = executionContext.getApiAdapter();
 				Object id = api.getIdForObject(entity);
 
-				StateManager sm = (StateManager) ObjectProviderFactory.newForDetached(objManager, entity, id, api.getVersionForObject(entity));
+				ObjectProvider sm = (ObjectProvider) executionContext.newObjectProviderForDetached(entity, id, api.getVersionForObject(entity));
+				// ForDetached(executionContext, entity, id, api.getVersionForObject(entity));
 				sm.retrieveDetachState(sm);
 				AbstractClassMetaData acm = sm.getClassMetaData();
 				try {
 					int fieldPos = acm.getAbsolutePositionOfMember(field);
 					sm.loadField(fieldPos);
 					FetchPlanState fps = new FetchPlanState();
-					FieldManager detachFieldManager = new DetachFieldManager(sm, acm.getSCOMutableMemberFlags(), objManager.getFetchPlan().manageFetchPlanForClass(acm), fps, false);
+					FieldManager detachFieldManager = new DetachFieldManager(sm, acm.getSCOMutableMemberFlags(), executionContext.getFetchPlan().manageFetchPlanForClass(acm), fps, false);
 					detachFieldManager.fetchObjectField(fieldPos);
 				} finally {
 					((Detachable) entity).jdoReplaceDetachedState();
