@@ -39,8 +39,19 @@ public class JPQLQueryEngine implements QueryEngine {
 	protected static Log	log	= LogFactory.getLog(JPQLQueryEngine.class);
 
 	public Query createQuery(PersistenceManager manager, String query) {
+		return createQuery(manager, query, PersistenceAspect.STRATEGY_DETACHING, null);
+	}
+	
+	protected Query createQuery(PersistenceManager manager, String query, byte iStrategy, String iMode) {
 		if (log.isDebugEnabled())
 			log.debug("Executing query:" + query);
+		
+		manager.getFetchPlan().clearGroups();
+		manager.getFetchPlan().addGroup(PersistenceAspect.DEFAULT_MODE_LOADING);
+
+		if (iStrategy != PersistenceAspect.STRATEGY_STANDARD && iMode != null && !PersistenceAspect.DEFAULT_MODE_LOADING.equals(iMode))
+			manager.getFetchPlan().addGroup(iMode);
+
 		return manager.newQuery("javax.jdo.query.JPQL", query);
 	}
 
@@ -85,12 +96,12 @@ public class JPQLQueryEngine implements QueryEngine {
 		Map<String, Object> params = new HashMap<String, Object>();
 		List<String> projectionList = new ArrayList<String>();
 		buildQuery(queryInput, stringQuery, params, projectionList);
-		Query query = createQuery(manager, stringQuery.toString());
+		Query query = createQuery(manager, stringQuery.toString(), queryInput.getStrategy(), queryInput.getMode());
 		return executeQuery(manager, query, queryInput, params, projectionList);
 	}
 
 	public List<?> queryByText(PersistenceManager manager, QueryByText queryInput) {
-		Query query = createQuery(manager, queryInput.getText());
+		Query query = createQuery(manager, queryInput.getText(), queryInput.getStrategy(), queryInput.getMode());
 		return executeQuery(manager, query, queryInput, null, null);
 	}
 
