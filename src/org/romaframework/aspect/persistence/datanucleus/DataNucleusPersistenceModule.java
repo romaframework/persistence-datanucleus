@@ -29,7 +29,10 @@ public class DataNucleusPersistenceModule extends SelfRegistrantConfigurableModu
 	@Override
 	public void shutdown() throws RuntimeException {
 		if (persistenceManagerFactory != null)
-			persistenceManagerFactory.close();
+			try {
+				persistenceManagerFactory.close();
+			} catch (Exception e) {
+			}
 	}
 
 	/**
