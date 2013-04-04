@@ -39,8 +39,19 @@ public class JPQLQueryEngine implements QueryEngine {
 	protected static Log	log	= LogFactory.getLog(JPQLQueryEngine.class);
 
 	public Query createQuery(PersistenceManager manager, String query) {
+		return createQuery(manager, query, PersistenceAspect.STRATEGY_DETACHING, null);
+	}
+	
+	protected Query createQuery(PersistenceManager manager, String query, byte iStrategy, String iMode) {
 		if (log.isDebugEnabled())
 			log.debug("Executing query:" + query);
+		
+		manager.getFetchPlan().clearGroups();
+		manager.getFetchPlan().addGroup(PersistenceAspect.DEFAULT_MODE_LOADING);
+
+		if (iStrategy != PersistenceAspect.STRATEGY_STANDARD && iMode != null && !PersistenceAspect.DEFAULT_MODE_LOADING.equals(iMode))
+			manager.getFetchPlan().addGroup(iMode);
+
 		return manager.newQuery("javax.jdo.query.JPQL", query);
 	}
 
@@ -85,12 +96,12 @@ public class JPQLQueryEngine implements QueryEngine {
 		Map<String, Object> params = new HashMap<String, Object>();
 		List<String> projectionList = new ArrayList<String>();
 		buildQuery(queryInput, stringQuery, params, projectionList);
-		Query query = createQuery(manager, stringQuery.toString());
+		Query query = createQuery(manager, stringQuery.toString(), queryInput.getStrategy(), queryInput.getMode());
 		return executeQuery(manager, query, queryInput, params, projectionList);
 	}
 
 	public List<?> queryByText(PersistenceManager manager, QueryByText queryInput) {
-		Query query = createQuery(manager, queryInput.getText());
+		Query query = createQuery(manager, queryInput.getText(), queryInput.getStrategy(), queryInput.getMode());
 		return executeQuery(manager, query, queryInput, null, null);
 	}
 
@@ -169,16 +180,20 @@ public class JPQLQueryEngine implements QueryEngine {
 	}
 
 	public void buildQuery(QueryByFilter filter, StringBuilder query, Map<String, Object> params, List<String> projectionList) {
+		this.buildQuery(filter, query, params, projectionList, "A");
+	}
+
+	public void buildQuery(QueryByFilter filter, StringBuilder query, Map<String, Object> params, List<String> projectionList, String prefix) {
 		StringBuilder where = new StringBuilder();
 		Map<String, Class<?>> froms = new HashMap<String, Class<?>>();
 		Map<String, List<QueryByFilterProjection>> projections = new LinkedHashMap<String, List<QueryByFilterProjection>>();
 		Map<String, List<QueryByFilterOrder>> orders = new LinkedHashMap<String, List<QueryByFilterOrder>>();
-		projections.put("A", filter.getProjections());
+		projections.put(prefix, filter.getProjections());
 		if (!filter.getOrders().isEmpty())
-			orders.put("A", filter.getOrders());
+			orders.put(prefix, filter.getOrders());
 		if (!filter.getItems().isEmpty()) {
 			where.append(" where ");
-			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), "A", froms, projections, orders, 'A');
+			buildWhere(where, filter.getItems(), params, filter.getPredicateOperator(), prefix, froms, projections, orders, 'A');
 		}
 		query.append("select ");
 		if (filter.isDistinct()) {
@@ -188,9 +203,9 @@ public class JPQLQueryEngine implements QueryEngine {
 		if (!filter.getProjections().isEmpty()) {
 			buildProjection(query, groupBy, projections, projectionList);
 		} else {
-			query.append('A');
+			query.append(prefix);
 		}
-		query.append(" from ").append(filter.getCandidateClass().getName()).append(" A");
+		query.append(" from ").append(filter.getCandidateClass().getName()).append(" " + prefix);
 		for (Map.Entry<String, Class<?>> from : froms.entrySet()) {
 			query.append(',').append(from.getValue().getName()).append(' ').append(from.getKey());
 		}
@@ -307,6 +322,7 @@ public class JPQLQueryEngine implements QueryEngine {
 		if (items == null)
 			return;
 		Iterator<QueryByFilterItem> iter = items.iterator();
+		int subqueryCount = 0;
 		while (iter.hasNext()) {
 			QueryByFilterItem item = iter.next();
 			if (item instanceof QueryByFilterItemGroup) {
@@ -316,6 +332,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				buildWhere(where, ((QueryByFilterItemGroup) item).getItems(), params, ((QueryByFilterItemGroup) item).getPredicate(), alias, froms, projections, orders, aliasAppend);
 				where.append(")");
 			} else if (item instanceof QueryByFilterItemPredicate) {
+				where.append("(");
 				QueryByFilterItemPredicate pred = ((QueryByFilterItemPredicate) item);
 				String fieldName = pred.getFieldName();
 				String pName = fieldName.replace('.', '_');
@@ -340,10 +357,12 @@ public class JPQLQueryEngine implements QueryEngine {
 					}
 				} else {
 					where.append(getJPQLOperator(pred.getFieldOperator()));
-					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+					boolean braced = pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS)
+							|| (pred.getFieldValue() instanceof QueryByFilter);
+					if (braced)
 						where.append("(");
 					if (QueryOperator.LIKE.equals(pred.getFieldOperator()) && ((pred.getFieldValue() instanceof String) || pred.getFieldValue() == null)) {
-						String value = (String) pred.getFieldValue();
+						String value = (String) quote(pred.getFieldValue());
 						if (value == null)
 							params.put(pName, "%");
 						else {
@@ -353,15 +372,26 @@ public class JPQLQueryEngine implements QueryEngine {
 								params.put(pName, "%" + value.toUpperCase() + "%");
 						}
 					} else {
-						params.put(pName, pred.getFieldValue());
+						if (((QueryByFilterItemPredicate) item).getFieldValue() instanceof QueryByFilter) {
+							StringBuilder subStringQuery = new StringBuilder();
+							// Map<String, Object> subParams = new HashMap<String, Object>();
+							List<String> subProjectionList = new ArrayList<String>();
+							buildQuery((QueryByFilter) ((QueryByFilterItemPredicate) item).getFieldValue(), subStringQuery, params, subProjectionList, alias + "_" + (subqueryCount++));
+							where.append(subStringQuery.toString());
+						} else {
+							params.put(pName, quote(pred.getFieldValue()));
+						}
 					}
-					if (pred.getFieldOperator().equals(QueryOperator.CONTAINS))
-						where.append(alias).append(".").append(fieldName);
-					else
-						where.append(':').append(pName);
-					if (pred.getFieldOperator().equals(QueryOperator.IN) || pred.getFieldOperator().equals(QueryOperator.CONTAINS))
-						where.append(")");
+					if (!(((QueryByFilterItemPredicate) item).getFieldValue() instanceof QueryByFilter)) {
+						if (pred.getFieldOperator().equals(QueryOperator.CONTAINS))
+							where.append(alias).append(".").append(fieldName);
+						else
+							where.append(':').append(pName);
+					}
+					if (braced)
+						where.append(") ");
 				}
+				where.append(")");
 			} else if (item instanceof QueryByFilterItemText) {
 				where.append(alias).append(".").append(((QueryByFilterItemText) item).getCondition());
 			} else if (item instanceof QueryByFilterItemReverse) {
@@ -389,6 +419,13 @@ public class JPQLQueryEngine implements QueryEngine {
 			if (iter.hasNext())
 				where.append(" ").append(predicate).append(" ");
 		}
+	}
+
+	private Object quote(Object fieldValue) {
+		if (fieldValue != null && fieldValue instanceof String) {
+			return ((String) fieldValue).replaceAll("\\\\", "\\\\\\\\");
+		}
+		return fieldValue;
 	}
 
 	private String getJPQLOperator(QueryOperator operator) {
@@ -433,7 +470,7 @@ public class JPQLQueryEngine implements QueryEngine {
 				SchemaField field = sf.next();
 				try {
 					boolean found = false;
-					Field[] fields = iQuery.getCandidateClass().getFields();
+					Field[] fields = iQuery.getCandidateClass().getDeclaredFields();
 					for (Field classField : fields) {
 						if (classField.getName().equals(field.getName())) {
 							found = true;
