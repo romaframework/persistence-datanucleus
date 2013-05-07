@@ -5,12 +5,8 @@ import javax.jdo.PersistenceManagerFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.romaframework.aspect.persistence.PersistenceAspect;
 import org.romaframework.aspect.persistence.PersistenceContextInjector;
 import org.romaframework.aspect.persistence.datanucleus.jdo.OIDManager;
-import org.romaframework.core.Roma;
-import org.romaframework.core.aspect.AspectManager;
-import org.romaframework.core.config.RomaApplicationContext;
 import org.romaframework.core.module.SelfRegistrantConfigurableModule;
 
 public class DataNucleusPersistenceModule extends SelfRegistrantConfigurableModule<String> {

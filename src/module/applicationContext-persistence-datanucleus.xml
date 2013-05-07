@@ -9,28 +9,6 @@
 			<map>
 				<!-- TO TUNE DATANUCLEUS LOOK AT: http://www.datanucleus.org/products/accessplatform/performance_tuning.html -->
 				<entry key="datanucleus.PersistenceUnitName" value="default" />
-
-				<entry key="javax.jdo.PersistenceManagerFactoryClass" value="org.datanucleus.api.jdo.JDOPersistenceManagerFactory" />
-				<entry key="javax.jdo.option.NontransactionalRead" value="true" />
-				<entry key="javax.jdo.option.RetainValues" value="true" />
-				<entry key="datanucleus.cache.level2" value="true" />
-				<entry key="datanucleus.cache.collections.lazy" value="true" />
-				<entry key="datanucleus.plugin.pluginRegistryBundleCheck" value="NONE" />
-
-				<!-- ENABLE THIS PROPERTY TO USE THE OLD DATANUCLEUS COLUMN DEFAULT DEFINITION -->
-				<!-- <entry key="datanucleus.identifierFactory" value="datanucleus" /> -->
-
-				<!-- SET THE CONNECTION POOLING LIBRARY (C3P0 IS BUNDLED WITH DISTRIBUTION) -->
-				<entry key="datanucleus.connectionPoolingType" value="C3P0" />
-
-				<!-- SET THE FOLLOWING TO FALSE AT RUN-TIME TO GAIN PERFORMANCE AT STARTUP -->
-				<entry key="datanucleus.autoCreateSchema" value="true" />
-				<entry key="datanucleus.autoCreateTables" value="true" />
-				<entry key="datanucleus.autoCreateColumns" value="true" />
-				<entry key="datanucleus.autoCreateConstraints" value="true" />
-				<entry key="datanucleus.validateTables" value="true" />
-				<entry key="datanucleus.validateConstraints" value="true" />
-				<entry key="datanucleus.validateColumns" value="true" />
 			</map>
 		</property>
 	</bean>
@@ -46,13 +24,13 @@
 	</bean>
 
 	<bean id="TxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDOTxPersistenceAspect"
-		singleton="false">
+		singleton="false" lazy-init="true">
 		<constructor-arg ref="DataNucleusPersistenceModule" />
 		<property name="queryEngine" ref="QueryEngine" />
 	</bean>
 
 	<bean id="NoTxPersistenceAspect" class="org.romaframework.aspect.persistence.datanucleus.jdo.JDONoTxPersistenceAspect"
-		singleton="false">
+		singleton="false" lazy-init="true">
 		<constructor-arg ref="DataNucleusPersistenceModule" />
 		<property name="queryEngine" ref="QueryEngine" />
 	</bean>
