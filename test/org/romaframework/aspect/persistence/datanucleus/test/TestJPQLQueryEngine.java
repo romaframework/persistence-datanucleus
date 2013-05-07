@@ -35,7 +35,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 
-		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2"), replaceSpaces(query.toString()));
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where (A.test = :test) and (A.test2 = :test2)"), replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 2);
 	}
 
@@ -57,7 +57,7 @@ public class TestJPQLQueryEngine {
 
 		Assert
 				.assertEquals(
-						replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and A.test2 = :test2 and A.test3 LIKE :test3 and A.test3 <> :test31 and A.test3 IN (:test32)"),
+						replaceSpaces("select A from org.romaframework.core.Roma A where (A.test = :test) and (A.test2 = :test2) and (A.test3 LIKE :test3) and (A.test3 <> :test31) and (A.test3 IN (:test32) )"),
 						replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 5);
 	}
@@ -86,7 +86,7 @@ public class TestJPQLQueryEngine {
 
 		Assert
 				.assertEquals(
-						replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and :test1 MEMBER OF (A.test) and A.test IN (:test2) and A.test LIKE :test3 and A.test > :test4 and A.test >= :test5 and A.test < :test6 and A.test <= :test7 and A.test <> :test8 and A.test NOT IN (:test9)"),
+						replaceSpaces("select A from org.romaframework.core.Roma A where (A.test = :test) and (:test1 MEMBER OF (A.test) ) and (A.test IN (:test2) ) and (A.test LIKE :test3) and (A.test > :test4) and (A.test >= :test5) and (A.test < :test6) and (A.test <= :test7) and (A.test <> :test8) and (A.test NOT IN :test9)"),
 						replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 10);
 	}
@@ -107,7 +107,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 		Assert.assertEquals(
-				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where A.test = :test and AA.refer = A and AA.name = :name and A.name = :name1"),
+				replaceSpaces("select A from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where (A.test = :test) and AA.refer = A and (AA.name = :name) and (A.name = :name1)"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -129,7 +129,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 
-		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where A.test = :test and (A.test = :test1 or A.test1 = :test11)"),
+		Assert.assertEquals(replaceSpaces("select A from org.romaframework.core.Roma A where (A.test = :test) and ((A.test = :test1) or (A.test1 = :test11))"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 3);
 	}
@@ -153,7 +153,7 @@ public class TestJPQLQueryEngine {
 
 
 		Assert.assertEquals(
-				replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test),SUM(A.test) from org.romaframework.core.Roma A where A.test = :test group by A.test"),
+				replaceSpaces("select A.test,COUNT(A.test),MAX(A.test),MIN(A.test),AVG(A.test),SUM(A.test) from org.romaframework.core.Roma A where (A.test = :test) group by A.test"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 1);
 	}
@@ -175,7 +175,7 @@ public class TestJPQLQueryEngine {
 		qe.buildQuery(qbf, query, params, project);
 
 		Assert.assertEquals(
-				replaceSpaces("select A.test,AA.name from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where A.test = :test and AA.refer = A and AA.name = :name"),
+				replaceSpaces("select A.test,AA.name from org.romaframework.core.Roma A,org.romaframework.core.Roma AA where (A.test = :test) and AA.refer = A and (AA.name = :name)"),
 				replaceSpaces(query.toString()));
 		Assert.assertEquals(params.size(), 2);
 	}
