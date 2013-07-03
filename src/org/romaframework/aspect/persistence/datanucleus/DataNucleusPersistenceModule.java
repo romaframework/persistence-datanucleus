@@ -5,6 +5,7 @@ import javax.jdo.PersistenceManagerFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.romaframework.aspect.core.CoreSettings;
 import org.romaframework.aspect.persistence.PersistenceContextInjector;
 import org.romaframework.aspect.persistence.datanucleus.jdo.OIDManager;
 import org.romaframework.core.module.SelfRegistrantConfigurableModule;
@@ -18,6 +19,12 @@ public class DataNucleusPersistenceModule extends SelfRegistrantConfigurableModu
 
 	public DataNucleusPersistenceModule(OIDManager iOIDManager) {
 		new RomaDetachListener();
+		String val = CoreSettings.getInstance().getSchemaIgnoreActions();
+		if (val == null || val.trim().isEmpty())
+			val = "jdo*";
+		else
+			val += ",jdo*";
+		CoreSettings.getInstance().setSchemaIgnoreActions(val);
 		oidManager = iOIDManager;
 	}
 
