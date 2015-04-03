@@ -352,6 +352,8 @@ public class JPQLQueryEngine implements QueryEngine {
 						where.append(" IS NULL ");
 					} else if (QueryOperator.NOT_EQUALS.equals(pred.getFieldOperator())) {
 						where.append(" IS NOT NULL ");
+					} else if (QueryOperator.NOT_EMPTY.equals(pred.getFieldOperator()) || QueryOperator.EMPTY.equals(pred.getFieldOperator())) {
+						where.append(getJPQLOperator(pred.getFieldOperator()));
 					} else {
 						throw new PersistenceException("field:" + pred.getFieldName() + " with Operator: " + pred.getFieldOperator() + " cannot be null.");
 					}
@@ -450,6 +452,10 @@ public class JPQLQueryEngine implements QueryEngine {
 			return " <> ";
 		case NOT_IN:
 			return " NOT IN ";
+		case EMPTY:
+			return " IS EMPTY	 ";
+		case NOT_EMPTY:
+			return " IS NOT EMPTY ";
 		}
 		return "";
 	}
